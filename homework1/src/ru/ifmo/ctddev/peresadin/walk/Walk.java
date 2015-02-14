@@ -1,7 +1,6 @@
 package ru.ifmo.ctddev.peresadin.walk;
 
 import java.io.*;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -20,24 +19,16 @@ public class Walk {
         String input = args[0];
         String output = args[1];
         BufferedReader reader = null;
+        OutputStreamWriter writer = null;
         try {
             reader = new BufferedReader(new InputStreamReader(new FileInputStream(input), "UTF-8"));
-
-            OutputStreamWriter writer = null;
-            try {
-                writer = new OutputStreamWriter(new FileOutputStream(output), "UTF-8");
-            } catch (IOException e) {
-                try {
-                    writer.close();
-                } catch (IOException ignore) {}
-                throw e;
-            }
+            writer = new OutputStreamWriter(new FileOutputStream(output), "UTF-8");
 
             String line;
             while ((line = reader.readLine()) != null) {
                 HashMap<Path, String> hashes = RecursiveWalk.walkHashFNV32(Paths.get(line));
                 for (Map.Entry<Path, String> e : hashes.entrySet())
-                    writer.write(e.getValue() + " " + e.getKey().toAbsolutePath());
+                    writer.write(e.getValue() + " " + e.getKey().toAbsolutePath() + "\n");
             }
         } catch (FileNotFoundException e) {
             System.out.println(e.getMessage());
@@ -46,7 +37,10 @@ public class Walk {
             System.out.println(e.getMessage());
         } finally {
             try {
-                reader.close();
+                if (reader != null)
+                    reader.close();
+                if (writer != null)
+                    writer.close();
             } catch (IOException ignore) {}
         }
     }

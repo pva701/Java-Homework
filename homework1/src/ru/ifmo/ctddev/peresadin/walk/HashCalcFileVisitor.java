@@ -27,11 +27,14 @@ public class HashCalcFileVisitor extends SimpleFileVisitor<Path> {
         try {
             inputStream = Files.newInputStream(file);
             hashes.put(file, function.hash(inputStream));
+        } catch (AccessDeniedException e) {
+            System.out.println("Access denied to file " + e.getMessage());
         } catch (IOException e) {
             System.out.println(e.getMessage());
             hashes.put(file, ERROR_HASH);
             try {
-                inputStream.close();
+                if (inputStream != null)
+                    inputStream.close();
             } catch (IOException ignore) {}
         }
         return FileVisitResult.CONTINUE;
