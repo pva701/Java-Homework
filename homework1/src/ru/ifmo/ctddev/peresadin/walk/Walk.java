@@ -26,9 +26,12 @@ public class Walk {
 
             String line;
             while ((line = reader.readLine()) != null) {
-                HashMap<Path, String> hashes = RecursiveWalk.walkHashFNV32(Paths.get(line));
-                for (Map.Entry<Path, String> e : hashes.entrySet())
-                    writer.write(e.getValue() + " " + e.getKey().toAbsolutePath() + "\n");
+                Path path = Paths.get(line);
+                HashMap<Path, String> hashes = RecursiveWalk.walkHashFNV32(path);
+                for (Map.Entry<Path, String> e : hashes.entrySet()) {
+                    String resPath = e.getKey().toAbsolutePath().toString();
+                    writer.write(e.getValue() + " " + resPath.substring(resPath.indexOf(line)) + "\n");
+                }
             }
         } catch (FileNotFoundException e) {
             System.out.println(e.getMessage());

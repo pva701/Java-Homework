@@ -13,11 +13,11 @@ public class FNVHash32 implements HashFunction {
     @Override
     public String hash(InputStream inputStream) throws IOException {
         int available;
-        int xi = 0; //2_166_135_261;
-        int p = 16777619;
+        int xi = 0x811c9dc5;
+        int p = 0x01000193;
         while ((available = inputStream.read(buffer)) >= 0)
             for (int i = 0; i < available; ++i)
-                xi = xi * p + buffer[i];
+                xi = xi * p ^ (buffer[i] & 0xff);
         long res;
         if (xi >= 0) res = xi;
         else res = (1L<<32) + xi;
