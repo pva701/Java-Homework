@@ -17,7 +17,10 @@ public class FNVHash32 implements HashFunction {
         int p = 0x01000193;
         while ((available = inputStream.read(buffer)) >= 0)
             for (int i = 0; i < available; ++i)
-                xi = xi * p ^ (buffer[i] & 0xff);
+                if (buffer[i] >= 0)
+                    xi = xi * p ^ buffer[i];
+                else
+                    xi = xi * p ^ (buffer[i] + 256);
         long res;
         if (xi >= 0) res = xi;
         else res = (1L<<32) + xi;
