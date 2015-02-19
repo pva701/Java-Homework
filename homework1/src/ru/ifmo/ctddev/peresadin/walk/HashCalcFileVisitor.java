@@ -1,8 +1,6 @@
 package ru.ifmo.ctddev.peresadin.walk;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.HashMap;
@@ -14,44 +12,46 @@ public class HashCalcFileVisitor extends SimpleFileVisitor<Path> {
     private static final String ERROR_HASH = "00000000";
     private HashFunction function;
     private Path startPath;
-    private HashMap<Path, String> hashes = new HashMap<Path, String>();
+    private Writer writer;
 
-    public HashCalcFileVisitor(Path startPath, HashFunction hashFunction) {
+    public HashCalcFileVisitor(Path startPath, HashFunction hashFunction, Writer writer) {
         this.startPath = startPath;
         this.function = hashFunction;
+        this.writer = writer;
     }
 
     @Override
-    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
         InputStream inputStream = null;
+        String hash = null;
         try {
             inputStream = Files.newInputStream(file);
-            hashes.put(file, function.hash(inputStream));
+            hash = function.hash(inputStream);
+
         } catch (AccessDeniedException e) {
             System.out.println("Access denied to file " + e.getMessage());
         } catch (IOException e) {
-            System.out.println(e.getMessage());
-            hashes.put(file, ERROR_HASH);
+            hash = ERROR_HASH;
             try {
                 if (inputStream != null)
                     inputStream.close();
             } catch (IOException ignore) {}
         }
+
+        String resPath = file.toAbsolutePath().toString();
+        writer.write(hash + " " + resPath.substring(resPath.indexOf(startPath.toString())) + "\n");
         return FileVisitResult.CONTINUE;
     }
 
     @Override
-    public FileVisitResult visitFileFailed(Path file, IOException exc) {
+    public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
         System.out.println(exc.getMessage());
-        hashes.put(file, ERROR_HASH);
+        String resPath = file.toAbsolutePath().toString();
+        writer.write(ERROR_HASH + " " + resPath.substring(resPath.indexOf(startPath.toString())) + "\n");
         return FileVisitResult.CONTINUE;
     }
 
-    public HashMap<Path, String> calcHashes() {
-        try {
-            Files.walkFileTree(startPath, this);
-        } catch (IOException e) {
-        }
-        return hashes;
+    public void walkHash() throws IOException {
+        Files.walkFileTree(startPath, this);
     }
 }
