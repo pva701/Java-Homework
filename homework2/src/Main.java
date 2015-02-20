@@ -5,8 +5,9 @@ import java.util.*;
  */
 public class Main {
     public static void main(String[] args) {
-        new Comparator<>()
-        new TreeMap<>().co
-        new NavigableSet<>().com
+        new TreeSet<>().comparator()
+        new NavigableSet<>().comparator()
+        new HashSet<>()
+        new HashMap<>()
     }
 }

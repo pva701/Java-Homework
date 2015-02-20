@@ -3,7 +3,7 @@ import java.util.*;
 /**
  * Created by pva701 on 2/20/15.
  */
-public class ArraySet<T extends Comparable<T>> implements NavigableSet<T> {
+public class ArraySet<T extends Comparable<T>> extends AbstractSet<T> implements NavigableSet<T> {
     private T[] source;
     private int startIndex;
     private int endIndex;
@@ -15,18 +15,24 @@ public class ArraySet<T extends Comparable<T>> implements NavigableSet<T> {
     }
 
     @Override
-    public T lower(T t) {
-        return null;
+    public T lower(T t) {//TODO write
+        int index = searchBound(startIndex, endIndex, t, getComparator(false)) - 1;
+        if (index < startIndex)
+            return null;
+        return source[index];
     }
 
     @Override
-    public T floor(T t) {
-        return null;
+    public T floor(T t) {//TODO write
+        int index = searchBound(startIndex, endIndex, t, getComparator(false));
+        if (index < startIndex)
+            return null;
+        return source[index];
     }
 
     @Override
     public T ceiling(T t) {
-        return null;
+        int index = searchBound(startIndex, endIndex, t, getComparator(false));
     }
 
     @Override
@@ -36,12 +42,12 @@ public class ArraySet<T extends Comparable<T>> implements NavigableSet<T> {
 
     @Override
     public T pollFirst() {
-        return null;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public T pollLast() {
-        return null;
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -127,22 +133,31 @@ public class ArraySet<T extends Comparable<T>> implements NavigableSet<T> {
 
     @Override
     public Comparator<? super T> comparator() {
-        return null;
+        return new Comparator<T>() {
+            @Override
+            public int compare(T o1, T o2) {
+                return o1.compareTo(o2);
+            }
+        };
     }
 
     @Override
     public T first() {
-        return elements[0];
+        if (size() == 0)
+            return null;
+        return source[startIndex];
     }
 
     @Override
     public T last() {
-        return elements[elements.length - 1];
+        if (size() == 0)
+            return null;
+        return source[endIndex - 1];
     }
 
     @Override
     public int size() {
-        return elements.length;
+        return endIndex - startIndex;
     }
 
     @Override
@@ -152,62 +167,22 @@ public class ArraySet<T extends Comparable<T>> implements NavigableSet<T> {
 
     @Override
     public boolean contains(Object o) {
-        if (o == null) {
-            for (int i = 0; i < elements.length; ++i)
-                if (elements[i] == null)
-                    return true;
-        } else {
-            for (int i = 0; i < elements.length; ++i)
-                if (o.equals(elements[i]))
-                    return true;
-        }
-        return false;
+        if (o == null)
+            throw new NullPointerException();
+        T f = floor((T)o);
+        if (f == null)
+            return false;
+        return f.compareTo((T)o) == 0;
     }
 
     @Override
     public Object[] toArray() {
-        return new Object[0];
+        return Arrays.copyOfRange(source, startIndex, endIndex);
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public <T1> T1[] toArray(T1[] a) {
-        System.arraycopy(elements, 0, a, 0, elements.length);
+        System.arraycopy(source, startIndex, a, 0, size());
         return a;
-    }
-
-    @Override
-    public boolean add(T t) {
-        throw new UnsupportedOperationException("add doesn't supported!");
-    }
-
-    @Override
-    public boolean remove(Object o) {
-        throw new UnsupportedOperationException("remove doesn't supported!");
-    }
-
-    @Override
-    public boolean containsAll(Collection<?> c) {
-        return false;
-    }
-
-    @Override
-    public boolean addAll(Collection<? extends T> c) {
-        throw new UnsupportedOperationException("addAll doesn't supported!");
-    }
-
-    @Override
-    public boolean retainAll(Collection<?> c) {
-        return false;
-    }
-
-    @Override
-    public boolean removeAll(Collection<?> c) {
-        throw new UnsupportedOperationException("removeAll doesn't supported!");
-    }
-
-    @Override
-    public void clear() {
-        throw new UnsupportedOperationException("clear doesn't supported!");
     }
 }
