@@ -4,7 +4,15 @@ import java.util.*;
  * Created by pva701 on 2/20/15.
  */
 public class ArraySet<T extends Comparable<T>> implements NavigableSet<T> {
-    private T[] elements;
+    private T[] source;
+    private int startIndex;
+    private int endIndex;
+
+    private ArraySet(T[] source, int from, int to) {
+        this.source = source;
+        startIndex = from;
+        endIndex = to;
+    }
 
     @Override
     public T lower(T t) {
@@ -51,37 +59,70 @@ public class ArraySet<T extends Comparable<T>> implements NavigableSet<T> {
         return null;
     }
 
+    private Comparator<T> getComparator(final boolean inclusive) {
+        if (inclusive)
+            return new Comparator<T>() {
+                @Override
+                public int compare(T o1, T o2) {
+                    return (o1.compareTo(o2) > 0 ? 1 : -1);
+                }
+            };
+
+        return new Comparator<T>() {
+            @Override
+            public int compare(T o1, T o2) {
+                return (o1.compareTo(o2) >= 0 ? 1 : -1);
+            }
+        };
+    }
+
+    private int searchBound(int from, int to, T x, Comparator<T> cmp) {
+        if (x == null)
+            throw new IllegalArgumentException("element is null");
+        int l = from - 1, r = to, mid;
+        while (l < r) {
+            mid = (l + r) / 2;
+            if (cmp.compare(x, source[mid]) >= 0)
+                l = mid;
+            else
+                r = mid;
+        }
+        return r;
+    }
+
     @Override
-    public NavigableSet<T> subSet(T fromElement, boolean fromInclusive, T toElement, boolean toInclusive) {
-        return null;
+    public NavigableSet<T> subSet(T fromElement, final boolean fromInclusive, T toElement, final boolean toInclusive) {
+        int l = searchBound(startIndex, endIndex, fromElement, getComparator(fromInclusive));
+        int r = searchBound(startIndex, endIndex, toElement, getComparator(toInclusive));
+        return new ArraySet<T>(source, l, r);
     }
 
     @Override
     public NavigableSet<T> headSet(T toElement, boolean inclusive) {
-        int i = elements.length - 1;
-        int bound = (inclusive ? 0 : 1);
-        while (i >= 0 && toElement.compareTo(elements[i]) >= bound) --i;
-        ++i;
+        int r = searchBound(startIndex, endIndex, toElement, getComparator(inclusive));
+        return new ArraySet<T>(source, startIndex, r);
     }
 
     @Override
     public NavigableSet<T> tailSet(T fromElement, boolean inclusive) {
-        return null;
+        int l = searchBound(startIndex, endIndex, fromElement, getComparator(inclusive));
+        return new ArraySet<T>(source, l, endIndex);
     }
+
 
     @Override
     public SortedSet<T> subSet(T fromElement, T toElement) {
-        return null;
+        return subSet(fromElement, true, toElement, false);
     }
 
     @Override
     public SortedSet<T> headSet(T toElement) {
-        return null;
+        return headSet(toElement, false);
     }
 
     @Override
     public SortedSet<T> tailSet(T fromElement) {
-        return null;
+        return tailSet(fromElement, true);
     }
 
     @Override
