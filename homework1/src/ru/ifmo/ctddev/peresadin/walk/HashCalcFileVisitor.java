@@ -22,20 +22,17 @@ public class HashCalcFileVisitor extends SimpleFileVisitor<Path> {
 
     @Override
     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-        InputStream inputStream = null;
-        String hash = null;
+        String hash = ERROR_HASH;
         try {
-            inputStream = Files.newInputStream(file);
-            hash = function.hash(inputStream);
-
+            InputStream inputStream = Files.newInputStream(file);
+            try {
+                hash = function.hash(inputStream);
+            } finally {
+                inputStream.close();
+            }
         } catch (AccessDeniedException e) {
             System.out.println("Access denied to file " + e.getMessage());
         } catch (IOException e) {
-            hash = ERROR_HASH;
-            try {
-                if (inputStream != null)
-                    inputStream.close();
-            } catch (IOException ignore) {}
         }
 
         String resPath = file.toAbsolutePath().toString();
