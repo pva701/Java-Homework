@@ -1,18 +1,75 @@
+import java.lang.reflect.Array;
 import java.util.*;
 
 /**
  * Created by pva701 on 2/20/15.
  */
-public class ArraySet<T extends Comparable<T>> extends AbstractSet<T> implements NavigableSet<T> {
+public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
     private T[] source;
     private int startIndex;
     private int endIndex;
+    private Comparator<? super T> comparator;
+
+    private void constructor(Object[] array) {
+        if (array.length == 0)
+            return;
+        T[] copy = (T[])Arrays.copyOf(array, array.length);
+        if (comparator == null)
+            Arrays.sort(copy);
+        else
+            Arrays.sort(copy, comparator);
+        int unique = 1;
+        for (int i = 1; i < copy.length; ++i)
+            if (compare(copy[i - 1], copy[i]) != 0) unique++;
+        source = (T[])Array.newInstance(array.getClass().getComponentType(), unique);
+        source[0] = copy[0];
+        unique = 1;
+        for (int i = 1; i < copy.length; ++i)
+            if (compare(copy[i - 1], copy[i]) != 0)
+                source[unique++] = copy[i];
+        startIndex = 0;
+        endIndex = source.length;
+    }
 
     private ArraySet(T[] source, int from, int to) {
         this.source = source;
         startIndex = from;
         endIndex = to;
     }
+
+    private ArraySet(T[] source, int from, int to, Comparator<? super T> comparator) {
+        this.source = source;
+        this.comparator = comparator;
+        startIndex = from;
+        endIndex = to;
+    }
+
+    public ArraySet() {
+    }
+
+    public ArraySet(T[] array) {
+        constructor(array);
+    }
+
+    public ArraySet(T[] array, Comparator<? super T> comparator) {
+        this.comparator = comparator;
+        constructor(array);
+    }
+
+    public ArraySet(Collection<? extends T> collection) {
+        constructor(collection.toArray());
+    }
+
+    public ArraySet(Collection<? extends T> collection, Comparator<? super T> comparator) {
+        this.comparator = comparator;
+        constructor(collection.toArray());
+    }
+
+    public ArraySet(SortedSet<? super T> set) {
+        this.comparator = set.comparator();
+         constructor(set.toArray());
+    }
+
 
     @Override
     public T lower(T t) {
@@ -57,6 +114,29 @@ public class ArraySet<T extends Comparable<T>> extends AbstractSet<T> implements
     }
 
     @Override
+    public NavigableSet<T> descendingSet() {
+        T[] subArray = Arrays.copyOfRange(source, startIndex, endIndex);
+        for (int i = 0; i < subArray.length / 2; ++i) {
+            T tmp = subArray[i];
+            subArray[i] = subArray[subArray.length - i - 1];
+            subArray[subArray.length - i - 1] = tmp;
+        }
+        if (comparator == null)
+            return new ArraySet<T>(subArray, 0, subArray.length);
+        return new ArraySet<T>(subArray, 0, subArray.length, new Comparator<T>() {
+            @Override
+            public int compare(T o1, T o2) {
+                int r = comparator.compare(o1, o2);
+                if (r < 0)
+                    return 1;
+                if (r > 0)
+                    return -1;
+                return 0;
+            }
+        });
+    }
+
+    @Override
     public Iterator<T> iterator() {
         return new Iterator<T>() {
             int i = startIndex;
@@ -77,11 +157,6 @@ public class ArraySet<T extends Comparable<T>> extends AbstractSet<T> implements
                 throw new UnsupportedOperationException();
             }
         };
-    }
-
-    @Override
-    public NavigableSet<T> descendingSet() {
-        return null;
     }
 
     @Override
@@ -112,14 +187,14 @@ public class ArraySet<T extends Comparable<T>> extends AbstractSet<T> implements
             return new Comparator<T>() {
                 @Override
                 public int compare(T o1, T o2) {
-                    return (o1.compareTo(o2) > 0 ? 1 : -1);
+                    return (this.compare(o1, o2) > 0 ? 1 : -1);
                 }
             };
 
         return new Comparator<T>() {
             @Override
             public int compare(T o1, T o2) {
-                return (o1.compareTo(o2) >= 0 ? 1 : -1);
+                return (this.compare(o1, o2) >= 0 ? 1 : -1);
             }
         };
     }
@@ -174,12 +249,7 @@ public class ArraySet<T extends Comparable<T>> extends AbstractSet<T> implements
 
     @Override
     public Comparator<? super T> comparator() {
-        return new Comparator<T>() {
-            @Override
-            public int compare(T o1, T o2) {
-                return o1.compareTo(o2);
-            }
-        };
+        return comparator;
     }
 
     @Override
@@ -207,13 +277,14 @@ public class ArraySet<T extends Comparable<T>> extends AbstractSet<T> implements
     }
 
     @Override
-    public boolean contains(Object o) {
+    public boolean contains(Object o) {//TODO write
         if (o == null)
             throw new NullPointerException();
-        T f = floor((T)o);
+        T castO = (T)o;
+        T f = floor(castO);
         if (f == null)
             return false;
-        return f.compareTo((T)o) == 0;
+        return compare(f, castO) == 0;
     }
 
     @Override
@@ -225,5 +296,11 @@ public class ArraySet<T extends Comparable<T>> extends AbstractSet<T> implements
     public <T1> T1[] toArray(T1[] a) {
         System.arraycopy(source, startIndex, a, 0, size());
         return a;
+    }
+
+    private int compare(T a, T b) {
+        if (comparator == null)
+            return ((Comparable<T>)a).compareTo(b);
+        return comparator.compare(a, b);
     }
 }
