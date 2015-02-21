@@ -15,7 +15,15 @@ public class ArraySet<T extends Comparable<T>> extends AbstractSet<T> implements
     }
 
     @Override
-    public T lower(T t) {//TODO write
+    public T lower(T t) {
+        int index = searchBound(startIndex, endIndex, t, getComparator(true)) - 1;
+        if (index < startIndex)
+            return null;
+        return source[index];
+    }
+
+    @Override
+    public T floor(T t) {
         int index = searchBound(startIndex, endIndex, t, getComparator(false)) - 1;
         if (index < startIndex)
             return null;
@@ -23,21 +31,19 @@ public class ArraySet<T extends Comparable<T>> extends AbstractSet<T> implements
     }
 
     @Override
-    public T floor(T t) {//TODO write
-        int index = searchBound(startIndex, endIndex, t, getComparator(false));
-        if (index < startIndex)
+    public T ceiling(T t) {
+        int index = searchBound(startIndex, endIndex, t, getComparator(true));
+        if (index == endIndex)
             return null;
         return source[index];
     }
 
     @Override
-    public T ceiling(T t) {
-        int index = searchBound(startIndex, endIndex, t, getComparator(false));
-    }
-
-    @Override
     public T higher(T t) {
-        return null;
+        int index = searchBound(startIndex, endIndex, t, getComparator(false));
+        if (index == endIndex)
+            return null;
+        return source[index];
     }
 
     @Override
@@ -52,7 +58,25 @@ public class ArraySet<T extends Comparable<T>> extends AbstractSet<T> implements
 
     @Override
     public Iterator<T> iterator() {
-        return null;
+        return new Iterator<T>() {
+            int i = startIndex;
+            @Override
+            public boolean hasNext() {
+                return i != endIndex;
+            }
+
+            @Override
+            public T next() {
+                if (!hasNext())
+                    throw new NoSuchElementException();
+                return source[i++];
+            }
+
+            @Override
+            public void remove() {
+                throw new UnsupportedOperationException();
+            }
+        };
     }
 
     @Override
@@ -62,7 +86,25 @@ public class ArraySet<T extends Comparable<T>> extends AbstractSet<T> implements
 
     @Override
     public Iterator<T> descendingIterator() {
-        return null;
+        return new Iterator<T>() {
+            int i = endIndex - 1;
+            @Override
+            public boolean hasNext() {
+                return i != startIndex - 1;
+            }
+
+            @Override
+            public T next() {
+                if (!hasNext())
+                    throw new NoSuchElementException();
+                return source[i--];
+            }
+
+            @Override
+            public void remove() {
+                throw new UnsupportedOperationException();
+            }
+        };
     }
 
     private Comparator<T> getComparator(final boolean inclusive) {
@@ -97,15 +139,15 @@ public class ArraySet<T extends Comparable<T>> extends AbstractSet<T> implements
     }
 
     @Override
-    public NavigableSet<T> subSet(T fromElement, final boolean fromInclusive, T toElement, final boolean toInclusive) {
+    public NavigableSet<T> subSet(T fromElement, boolean fromInclusive, T toElement, boolean toInclusive) {
         int l = searchBound(startIndex, endIndex, fromElement, getComparator(fromInclusive));
-        int r = searchBound(startIndex, endIndex, toElement, getComparator(toInclusive));
+        int r = searchBound(startIndex, endIndex, toElement, getComparator(!toInclusive));
         return new ArraySet<T>(source, l, r);
     }
 
     @Override
     public NavigableSet<T> headSet(T toElement, boolean inclusive) {
-        int r = searchBound(startIndex, endIndex, toElement, getComparator(inclusive));
+        int r = searchBound(startIndex, endIndex, toElement, getComparator(!inclusive));
         return new ArraySet<T>(source, startIndex, r);
     }
 
@@ -114,7 +156,6 @@ public class ArraySet<T extends Comparable<T>> extends AbstractSet<T> implements
         int l = searchBound(startIndex, endIndex, fromElement, getComparator(inclusive));
         return new ArraySet<T>(source, l, endIndex);
     }
-
 
     @Override
     public SortedSet<T> subSet(T fromElement, T toElement) {
