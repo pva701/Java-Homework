@@ -26,7 +26,23 @@ public class Main {
             }
         });
 
-        System.out.println(arr[0].x);
-        new TreeSet<>()
+        ArrayList<Integer> ar = new ArrayList<Integer>();
+        ar.add(1);
+        ar.add(3);
+        ar.add(3);
+        ar.add(2);
+        ar.add(5);
+        ArraySet<Integer> set = new ArraySet<Integer>(ar);
+        for (Integer e : set)
+            System.out.println("el = " + e);
+        System.out.println("lower = " + set.lower(1));
+        System.out.println("lower = " + set.lower(2));
+        System.out.println("lower = " + set.lower(10));
+        System.out.println("lower = " + set.lower(5));
+
+        System.out.println("floor = " + set.lower(1));
+        System.out.println("floor = " + set.lower(2));
+        System.out.println("floor = " + set.lower(10));
+        System.out.println("floor = " + set.lower(5));
     }
 }

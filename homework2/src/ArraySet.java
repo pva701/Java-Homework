@@ -121,17 +121,10 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
             subArray[i] = subArray[subArray.length - i - 1];
             subArray[subArray.length - i - 1] = tmp;
         }
-        if (comparator == null)
-            return new ArraySet<T>(subArray, 0, subArray.length);
         return new ArraySet<T>(subArray, 0, subArray.length, new Comparator<T>() {
             @Override
             public int compare(T o1, T o2) {
-                int r = comparator.compare(o1, o2);
-                if (r < 0)
-                    return 1;
-                if (r > 0)
-                    return -1;
-                return 0;
+                return compare(o2, o2);
             }
         });
     }
