@@ -124,7 +124,7 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
         return new ArraySet<T>(subArray, 0, subArray.length, new Comparator<T>() {
             @Override
             public int compare(T o1, T o2) {
-                return compare(o2, o2);
+                return ArraySet.this.compare(o2, o1);
             }
         });
     }
@@ -180,14 +180,14 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
             return new Comparator<T>() {
                 @Override
                 public int compare(T o1, T o2) {
-                    return (this.compare(o1, o2) > 0 ? 1 : -1);
+                    return (ArraySet.this.compare(o1, o2) > 0 ? 1 : -1);
                 }
             };
 
         return new Comparator<T>() {
             @Override
             public int compare(T o1, T o2) {
-                return (this.compare(o1, o2) >= 0 ? 1 : -1);
+                return (ArraySet.this.compare(o1, o2) >= 0 ? 1 : -1);
             }
         };
     }
@@ -196,7 +196,7 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
         if (x == null)
             throw new IllegalArgumentException("element is null");
         int l = from - 1, r = to, mid;
-        while (l < r) {
+        while (l + 1 < r) {
             mid = (l + r) / 2;
             if (cmp.compare(x, source[mid]) >= 0)
                 l = mid;

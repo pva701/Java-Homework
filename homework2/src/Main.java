@@ -32,7 +32,7 @@ public class Main {
         ar.add(3);
         ar.add(2);
         ar.add(5);
-        ArraySet<Integer> set = new ArraySet<Integer>(ar);
+        NavigableSet<Integer> set = new ArraySet<Integer>(ar);
         for (Integer e : set)
             System.out.println("el = " + e);
         System.out.println("lower = " + set.lower(1));
@@ -40,9 +40,43 @@ public class Main {
         System.out.println("lower = " + set.lower(10));
         System.out.println("lower = " + set.lower(5));
 
-        System.out.println("floor = " + set.lower(1));
-        System.out.println("floor = " + set.lower(2));
-        System.out.println("floor = " + set.lower(10));
-        System.out.println("floor = " + set.lower(5));
+        System.out.println("floor = " + set.floor(1));
+        System.out.println("floor = " + set.floor(2));
+        System.out.println("floor = " + set.floor(10));
+        System.out.println("floor = " + set.floor(5));
+
+        System.out.println("higher = " + set.higher(1));
+        System.out.println("higher = " + set.higher(2));
+        System.out.println("higher = " + set.higher(10));
+        System.out.println("higher = " + set.higher(5));
+
+        System.out.println("ceiling = " + set.ceiling(1));
+        System.out.println("ceiling = " + set.ceiling(2));
+        System.out.println("ceiling = " + set.ceiling(10));
+        System.out.println("ceiling = " + set.ceiling(5));
+
+        System.out.println("======reverse set=======");
+        set = set.descendingSet();
+        System.out.println("lower = " + set.lower(-1));
+        System.out.println("lower = " + set.lower(1));
+        System.out.println("lower = " + set.lower(2));
+        System.out.println("lower = " + set.lower(10));
+        System.out.println("lower = " + set.lower(5));
+
+        System.out.println("floor = " + set.floor(1));
+        System.out.println("floor = " + set.floor(2));
+        System.out.println("floor = " + set.floor(10));
+        System.out.println("floor = " + set.floor(5));
+
+        System.out.println("higher = " + set.higher(1));
+        System.out.println("higher = " + set.higher(2));
+        System.out.println("higher = " + set.higher(10));
+        System.out.println("higher = " + set.higher(5));
+
+        System.out.println("ceiling = " + set.ceiling(1));
+        System.out.println("ceiling = " + set.ceiling(2));
+        System.out.println("ceiling = " + set.ceiling(10));
+        System.out.println("ceiling = " + set.ceiling(5));
+
     }
 }
