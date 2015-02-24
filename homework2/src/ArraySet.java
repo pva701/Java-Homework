@@ -20,12 +20,12 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
             Arrays.sort(copy, comparator);
         int unique = 1;
         for (int i = 1; i < copy.length; ++i)
-            if (compare(copy[i - 1], copy[i]) != 0) unique++;
+            if (compareTo(copy[i - 1], copy[i]) != 0) unique++;
         source = (T[])Array.newInstance(array.getClass().getComponentType(), unique);
         source[0] = copy[0];
         unique = 1;
         for (int i = 1; i < copy.length; ++i)
-            if (compare(copy[i - 1], copy[i]) != 0)
+            if (compareTo(copy[i - 1], copy[i]) != 0)
                 source[unique++] = copy[i];
         startIndex = 0;
         endIndex = source.length;
@@ -124,7 +124,7 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
         return new ArraySet<T>(subArray, 0, subArray.length, new Comparator<T>() {
             @Override
             public int compare(T o1, T o2) {
-                return ArraySet.this.compare(o2, o1);
+                return compareTo(o2, o1);
             }
         });
     }
@@ -180,14 +180,14 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
             return new Comparator<T>() {
                 @Override
                 public int compare(T o1, T o2) {
-                    return (ArraySet.this.compare(o1, o2) > 0 ? 1 : -1);
+                    return (compareTo(o1, o2) > 0 ? 1 : -1);
                 }
             };
 
         return new Comparator<T>() {
             @Override
             public int compare(T o1, T o2) {
-                return (ArraySet.this.compare(o1, o2) >= 0 ? 1 : -1);
+                return (compareTo(o1, o2) >= 0 ? 1 : -1);
             }
         };
     }
@@ -248,19 +248,21 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
     @Override
     public T first() {
         if (size() == 0)
-            return null;
+            throw new NoSuchElementException();
         return source[startIndex];
     }
 
     @Override
     public T last() {
         if (size() == 0)
-            return null;
+            throw new NoSuchElementException();
         return source[endIndex - 1];
     }
 
     @Override
     public int size() {
+        if (endIndex - startIndex <= 0)
+            return 0;
         return endIndex - startIndex;
     }
 
@@ -270,28 +272,37 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
     }
 
     @Override
-    public boolean contains(Object o) {//TODO write
+    public boolean contains(Object o) {
         if (o == null)
             throw new NullPointerException();
         T castO = (T)o;
         T f = floor(castO);
         if (f == null)
             return false;
-        return compare(f, castO) == 0;
+        return compareTo(f, castO) == 0;
     }
 
     @Override
     public Object[] toArray() {
+        if (source == null || size() == 0)
+            return new Object[0];
         return Arrays.copyOfRange(source, startIndex, endIndex);
     }
 
+
     @Override
+    @SuppressWarnings("unchecked")
     public <T1> T1[] toArray(T1[] a) {
-        System.arraycopy(source, startIndex, a, 0, size());
-        return a;
+        if (source == null)
+            return (T1[])new Object[0];
+        if (a.length >= size()) {
+            System.arraycopy(source, startIndex, a, 0, size());
+            return a;
+        }
+        return (T1[])Arrays.copyOfRange(source, startIndex, endIndex, a.getClass());
     }
 
-    private int compare(T a, T b) {
+    private int compareTo(T a, T b) {
         if (comparator == null)
             return ((Comparable<T>)a).compareTo(b);
         return comparator.compare(a, b);
