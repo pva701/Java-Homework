@@ -10,6 +10,7 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
     private int endIndex;
     private Comparator<? super T> comparator;
 
+    @SuppressWarnings("unchecked")
     private void constructor(Object[] array) {
         if (array.length == 0)
             return;
@@ -67,7 +68,7 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
 
     public ArraySet(SortedSet<? super T> set) {
         this.comparator = set.comparator();
-         constructor(set.toArray());
+        constructor(set.toArray());
     }
 
 
@@ -135,7 +136,7 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
             int i = startIndex;
             @Override
             public boolean hasNext() {
-                return i != endIndex;
+                return i < endIndex;
             }
 
             @Override
@@ -280,26 +281,6 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
         if (f == null)
             return false;
         return compareTo(f, castO) == 0;
-    }
-
-    @Override
-    public Object[] toArray() {
-        if (source == null || size() == 0)
-            return new Object[0];
-        return Arrays.copyOfRange(source, startIndex, endIndex);
-    }
-
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public <T1> T1[] toArray(T1[] a) {
-        if (source == null)
-            return (T1[])new Object[0];
-        if (a.length >= size()) {
-            System.arraycopy(source, startIndex, a, 0, size());
-            return a;
-        }
-        return (T1[])Arrays.copyOfRange(source, startIndex, endIndex, a.getClass());
     }
 
     private int compareTo(T a, T b) {
