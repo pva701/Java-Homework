@@ -9,16 +9,18 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
     private int startIndex;
     private int endIndex;
     private Comparator<? super T> comparator;
+    private boolean isRev;
 
     @SuppressWarnings("unchecked")
     private void constructor(Object[] array) {
         if (array.length == 0)
             return;
         T[] copy = (T[])Arrays.copyOf(array, array.length);
-        if (comparator == null)
+        if (comparator == null) {
             Arrays.sort(copy);
-        else
+        } else {
             Arrays.sort(copy, comparator);
+        }
         int unique = 1;
         for (int i = 1; i < copy.length; ++i)
             if (compareTo(copy[i - 1], copy[i]) != 0) unique++;
@@ -32,13 +34,24 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
         endIndex = source.length;
     }
 
-    private ArraySet(T[] source, int from, int to) {
+    private T get(int i) {
+        if (startIndex <= i && i < endIndex) {
+            if (!isRev)
+                   return source[i];
+            return source[endIndex - i - 1];
+        } else
+            throw new NoSuchElementException();
+    }
+
+    private ArraySet(T[] source, int from, int to, boolean isReverse) {
+        this.isRev = isReverse;
         this.source = source;
         startIndex = from;
         endIndex = to;
     }
 
-    private ArraySet(T[] source, int from, int to, Comparator<? super T> comparator) {
+    private ArraySet(T[] source, int from, int to, Comparator<? super T> comparator, boolean isReverse) {
+        this.isRev = isReverse;
         this.source = source;
         this.comparator = comparator;
         startIndex = from;
@@ -75,33 +88,37 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
     @Override
     public T lower(T t) {
         int index = searchBound(startIndex, endIndex, t, getComparator(true)) - 1;
-        if (index < startIndex)
+        if (index < startIndex) {
             return null;
-        return source[index];
+        }
+        return get(index);//source[index];
     }
 
     @Override
     public T floor(T t) {
         int index = searchBound(startIndex, endIndex, t, getComparator(false)) - 1;
-        if (index < startIndex)
+        if (index < startIndex) {
             return null;
-        return source[index];
+        }
+        return get(index);//source[index];
     }
 
     @Override
     public T ceiling(T t) {
         int index = searchBound(startIndex, endIndex, t, getComparator(true));
-        if (index == endIndex)
+        if (index == endIndex) {
             return null;
-        return source[index];
+        }
+        return get(index);//source[index];
     }
 
     @Override
     public T higher(T t) {
         int index = searchBound(startIndex, endIndex, t, getComparator(false));
-        if (index == endIndex)
+        if (index == endIndex) {
             return null;
-        return source[index];
+        }
+        return get(index);//source[index];
     }
 
     @Override
@@ -116,18 +133,12 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
 
     @Override
     public NavigableSet<T> descendingSet() {
-        T[] subArray = Arrays.copyOfRange(source, startIndex, endIndex);
-        for (int i = 0; i < subArray.length / 2; ++i) {
-            T tmp = subArray[i];
-            subArray[i] = subArray[subArray.length - i - 1];
-            subArray[subArray.length - i - 1] = tmp;
-        }
-        return new ArraySet<T>(subArray, 0, subArray.length, new Comparator<T>() {
+        return new ArraySet<T>(source, startIndex, endIndex, new Comparator<T>() {
             @Override
             public int compare(T o1, T o2) {
                 return compareTo(o2, o1);
             }
-        });
+        }, !isRev);
     }
 
     @Override
@@ -143,7 +154,7 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
             public T next() {
                 if (!hasNext())
                     throw new NoSuchElementException();
-                return source[i++];
+                return get(i++);
             }
 
             @Override
@@ -166,7 +177,7 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
             public T next() {
                 if (!hasNext())
                     throw new NoSuchElementException();
-                return source[i--];
+                return get(i--);
             }
 
             @Override
@@ -176,14 +187,15 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
         };
     }
 
-    private Comparator<T> getComparator(final boolean inclusive) {
-        if (inclusive)
+    private Comparator<T> getComparator(boolean inclusive) {
+        if (inclusive) {
             return new Comparator<T>() {
                 @Override
                 public int compare(T o1, T o2) {
                     return (compareTo(o1, o2) > 0 ? 1 : -1);
                 }
             };
+        }
 
         return new Comparator<T>() {
             @Override
@@ -199,10 +211,11 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
         int l = from - 1, r = to, mid;
         while (l + 1 < r) {
             mid = (l + r) / 2;
-            if (cmp.compare(x, source[mid]) >= 0)
+            if (cmp.compare(x, get(mid)) >= 0) {
                 l = mid;
-            else
+            } else {
                 r = mid;
+            }
         }
         return r;
     }
@@ -211,19 +224,19 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
     public NavigableSet<T> subSet(T fromElement, boolean fromInclusive, T toElement, boolean toInclusive) {
         int l = searchBound(startIndex, endIndex, fromElement, getComparator(fromInclusive));
         int r = searchBound(startIndex, endIndex, toElement, getComparator(!toInclusive));
-        return new ArraySet<T>(source, l, r);
+        return new ArraySet<T>(source, l, r, false);
     }
 
     @Override
     public NavigableSet<T> headSet(T toElement, boolean inclusive) {
         int r = searchBound(startIndex, endIndex, toElement, getComparator(!inclusive));
-        return new ArraySet<T>(source, startIndex, r);
+        return new ArraySet<T>(source, startIndex, r, false);
     }
 
     @Override
     public NavigableSet<T> tailSet(T fromElement, boolean inclusive) {
         int l = searchBound(startIndex, endIndex, fromElement, getComparator(inclusive));
-        return new ArraySet<T>(source, l, endIndex);
+        return new ArraySet<T>(source, l, endIndex, false);
     }
 
     @Override
@@ -248,22 +261,25 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
 
     @Override
     public T first() {
-        if (size() == 0)
+        if (size() == 0) {
             throw new NoSuchElementException();
-        return source[startIndex];
+        }
+        return get(startIndex);//source[startIndex];
     }
 
     @Override
     public T last() {
-        if (size() == 0)
+        if (size() == 0) {
             throw new NoSuchElementException();
-        return source[endIndex - 1];
+        }
+        return get(endIndex - 1);//source[endIndex - 1];
     }
 
     @Override
     public int size() {
-        if (endIndex - startIndex <= 0)
+        if (endIndex - startIndex <= 0) {
             return 0;
+        }
         return endIndex - startIndex;
     }
 
@@ -273,19 +289,21 @@ public class ArraySet<T> extends AbstractSet<T> implements NavigableSet<T> {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public boolean contains(Object o) {
-        if (o == null)
+        if (o == null) {
             throw new NullPointerException();
+        }
         T castO = (T)o;
         T f = floor(castO);
-        if (f == null)
-            return false;
-        return compareTo(f, castO) == 0;
+        return f != null && compareTo(f, castO) == 0;
     }
 
+    @SuppressWarnings("unchecked")
     private int compareTo(T a, T b) {
-        if (comparator == null)
+        if (comparator == null) {
             return ((Comparable<T>)a).compareTo(b);
+        }
         return comparator.compare(a, b);
     }
 }
