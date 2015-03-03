@@ -43,11 +43,8 @@ public class Implementor {
     }
 
     private void implementConstructor(Writer writer) throws IOException{
-        try {
-            baseClass.getDeclaredConstructor();
+        if (baseClass.getDeclaredConstructors().length == 0)
             return;
-        } catch (NoSuchMethodException e) {}
-
         Constructor constructor = baseClass.getDeclaredConstructors()[0];
         writer.append(SPACE).append(printDeclarationOfConstructor(constructor)).append(" {\n");
 
@@ -150,11 +147,12 @@ public class Implementor {
     private void getNotImplementedMethods(Class c, ArrayList<Method> methods) {
         if (c == null)
             return;
+        getNotImplementedMethods(c.getSuperclass(), methods);
         Class[] interfaces = c.getInterfaces();
         for (Class interf : interfaces)
-            for (Method m : interf.getDeclaredMethods())
+            for (Method m : interf.getMethods())
                 safeAdd(methods, m);
-        getNotImplementedMethods(c.getSuperclass(), methods);
+
         for (Method m : c.getDeclaredMethods())
             safeAdd(methods, m);
     }
@@ -163,8 +161,7 @@ public class Implementor {
         ArrayList<Method> methods = new ArrayList<Method>();
         getNotImplementedMethods(baseClass, methods);
         ArrayList<Method> publics = new ArrayList<Method>();
-        for (Method m : methods)
-            System.out.println("" + m.toString());
+        //for (Method m : methods) System.out.println("" + m.toString());
 
         for (Method m : methods)
             if (Modifier.isPublic(m.getModifiers())) {
@@ -187,9 +184,9 @@ public class Implementor {
                     }
                 if (!dontAdd) publics.add(m);
             }
-        System.out.println("=======================");
+        /*System.out.println("=======================");
         for (Method m : publics)
-            System.out.println("" + m.toString());
+            System.out.println("" + m.toString());*/
         return publics;
     }
 
@@ -236,12 +233,19 @@ public class Implementor {
     }
 
     public static void main(String[] args) throws ClassNotFoundException {
-        Class c = Class.forName(args[0]);
+        //Class c = Class.forName(args[0]);
+        //Class c = NavigableSet.class;
+
+        Class c = NavigableSet.class;
         try {
             Writer wr = new PrintWriter(new File(c.getSimpleName() + "Impl" + ".java"));
             new Implementor(c).implement(wr);
             wr.close();
         } catch (IOException e) {
         }
+    }
+
+    public static abstract class ClDef {
+        public abstract int f();
     }
 }
