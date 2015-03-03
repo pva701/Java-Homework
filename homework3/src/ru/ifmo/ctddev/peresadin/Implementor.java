@@ -235,100 +235,13 @@ public class Implementor {
         return DEFAULT_VALUES.get(type);
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws ClassNotFoundException {
+        Class c = Class.forName(args[0]);
         try {
-            Class c = EbaniyTmp.class;
             Writer wr = new PrintWriter(new File(c.getSimpleName() + "Impl" + ".java"));
             new Implementor(c).implement(wr);
             wr.close();
         } catch (IOException e) {
-            System.out.println("exception = " + e.toString());
         }
-    }
-
-    abstract class C {
-        protected abstract int f();
-    }
-
-    interface B {
-        public void fun();
-    }
-
-    interface Int {
-        void f();
-    }
-
-    static abstract class Ab {
-        final int y;
-        public Ab(int x) {y = x;}
-        protected abstract int f();
-    }
-
-    static interface Bb {
-        abstract java.util.List<String> list(java.util.List<String> x);
-        int f();
-    }
-
-    abstract static class EbaniyTmp extends Ab implements Bb {
-        public EbaniyTmp(int x) {
-            super(x);
-        }
-    }
-
-    /*abstract class Ce extends Bb {
-        public Ce(int e) {super(e);}
-        public int f() {return 2;}
-
-    }
-    abstract class Cc extends Bb {
-        Cc(int e) {
-            super(e);
-        }
-        int e() {
-            return 20;
-        }
-    }*/
-
-
-    interface X1 {
-        int x1();
-    }
-
-    interface X1Impl extends X1 {
-        int x2();
-    }
-
-    public abstract static class AbX1 {
-        public abstract int x2();
-        public AbX1(int x) {}
-    }
-
-    public static abstract class X1C implements X1, X1Impl {
-    }
-
-    interface X1ImplImpl extends X1Impl {
-        public int x2();
-    }
-
-    class XXX implements X1 {
-        public int x1() {
-            return 2;
-        }
-    }
-
-    static abstract class X2 implements X1 {
-        abstract public int x2();
-        public int x1() {return 2;}
-    }
-
-    class X3 extends X2 implements X1 {
-        public int x2() {
-            return 2;
-        }
-
-    }
-
-    static interface NavSetInt extends NavigableSet<Integer> {
-
     }
 }
