@@ -1,8 +1,9 @@
 package ru.ifmo.ctddev.peresadin;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import java.io.*;
 import java.lang.reflect.*;
+import java.util.List;
+import java.util.NavigableSet;
 
 /**
  * Created by pva701 on 3/1/15.
@@ -17,19 +18,6 @@ public class Implementor {
         public void fun();
     }
 
-    static class A {
-        public static int f(int x, double y) {
-            B obj = new B() {
-                @Override
-                public void fun() {
-
-                }
-            };
-            System.out.println(obj.getClass().getEnclosingMethod().toGenericString());
-            return 0;
-        }
-    }
-
     interface Int {
         void f();
     }
@@ -37,32 +25,31 @@ public class Implementor {
     static abstract class Ab {
         final int y;
         public Ab(int x) {y = x;}
-        protected abstract int f();
+        public abstract int f() throws IOException;
     }
 
-    static class Cp extends Ab {
-        Cp(int x) {super(x);}
-        public int f() {return 2;}
+    static interface Bb {
+        abstract java.util.List<String> list(java.util.List<String> x);
+        public abstract int f() throws CloneNotSupportedException;
     }
 
-    static abstract class Bb extends Ab {
-        Bb(int x) {
+    abstract static class EbaniyTmp extends Ab implements Bb {
+        public EbaniyTmp(int x) {
             super(x);
         }
-        abstract <T> java.util.List<T> list(java.util.List<T> x);
-        public abstract int f();
-        //private void g() {}
-        //protected void k() {}
 
-        //abstract List<String> list(List<String> x);
+        @Override
+        public int f() {
+            return 0;
+        }
     }
 
-   /* class Ce extends Bb {
+    /*abstract class Ce extends Bb {
         public Ce(int e) {super(e);}
         public int f() {return 2;}
 
-    }*/
-    /*class Cc extends Bb {
+    }
+    abstract class Cc extends Bb {
         Cc(int e) {
             super(e);
         }
@@ -73,63 +60,71 @@ public class Implementor {
 
 
     interface X1 {
-        public int x1();
+        int x1();
     }
 
     interface X1Impl extends X1 {
-        public int x1();
+        int x2();
     }
 
-    class X1C implements X1 {
-        public int x1() {
-            return 1;
-        }
+    public abstract static class AbX1 {
+        public abstract int x2();
+        public AbX1(int x) {}
     }
 
-    class TT extends X1C implements X1Impl {
-
+    public static abstract class X1C implements X1, X1Impl {
     }
 
     interface X1ImplImpl extends X1Impl {
         public int x2();
     }
 
-    /*class XXX implements X1 {
+    class XXX implements X1 {
         public int x1() {
             return 2;
         }
-    }*/
+    }
 
-    abstract class X2 implements X1 {
-        abstract int x2();
+    static abstract class X2 implements X1 {
+        abstract public int x2();
         public int x1() {return 2;}
     }
 
-    /*class X3 extends X2 implements X1 {
-        int x2() {
+    class X3 extends X2 implements X1 {
+        public int x2() {
             return 2;
         }
 
-    }*/
+    }
+
+    static interface NavSetInt extends NavigableSet<Integer> {
+
+    }
 
     public static void main(String[] args) {
+        try {
+            Class c = AbX1.class;
+            Writer wr = new PrintWriter(new File(c.getSimpleName() + "Impl" + ".java"));
+            new ImplBuilder(c).implement(wr);
+            wr.close();
+        } catch (IOException e) {
+            System.out.println("exception = " + e.toString());
+        }
 
-        Class c = Bb.class;
+        /*Class c = Bb.class;
         System.out.println("ass = " + X1.class.isAssignableFrom(c));
         System.out.println("is eq = " + c.getDeclaredMethods()[0].equals(X1.class.getDeclaredMethods()[0]));
         for (Method m : c.getDeclaredMethods()) {
-            /*Type[] smth = m.getGenericParameterTypes();
-            System.out.println("tp");
-            for (int i = 0; i < smth.length; ++i)
-                System.out.println(smth[i].getName());*/
-            System.out.println(m.getGenericReturnType());
-            System.out.println("len = " + m.getTypeParameters().length);
+            System.out.println("nam = " + m.getName());
+            //System.out.println(m.getGenericReturnType());
+            //System.out.println("len = " + m.getTypeParameters().length);
             //if (m.getGenericParameterTypes().length != 0)
                 //System.out.println(m.getGenericParameterTypes()[0].toString());
         }
 
         System.out.println("==============");
         for (Method m : c.getMethods())
-            System.out.println(m.toString());
+            System.out.println(m.toString());*/
+
     }
 }
