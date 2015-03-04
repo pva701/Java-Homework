@@ -1,23 +1,56 @@
 package ru.ifmo.ctddev.peresadin;
+import info.kgeorgiy.java.advanced.implementor.Impler;
+import info.kgeorgiy.java.advanced.implementor.ImplerException;
 
 import java.io.*;
 import java.lang.reflect.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 
 /**
  * Created by pva701 on 3/1/15.
  */
-public class Implementor {
+public class Implementor implements Impler {
     private Class baseClass;
     public static String SPACE = "    ";
+
+    public Implementor() {}
 
     public Implementor(Class cl) {
         this.baseClass = cl;
     }
 
-    public void implement(Writer writer) throws IOException {
-        writer.append("package impl;\n");
+    @Override
+    public void implement(Class<?> token, File root) throws ImplerException {
+        if (token.getPackage() == null)
+            throw new ImplerException();
+        baseClass = token;
+        String packagePath = "/" + token.getPackage().getName().replace('.', '/');
+        String classPath = root.getAbsoluteFile() + packagePath + "/" + token.getSimpleName() + "Impl.java";
+        File f = new File(classPath);
+        f.getParentFile().mkdirs();
+        try {
+            f.createNewFile();
+        } catch (IOException e) {
+            System.out.println("File doesn't created!");
+        }
 
+        try (PrintWriter writer = new PrintWriter(
+                new BufferedWriter(
+                        new FileWriter(classPath)
+                )))
+        {
+            implement(writer);
+        } catch (IOException e) {
+            System.out.println("ex = " + e.getMessage());
+        }
+    }
+
+    public void implement(Writer writer) throws IOException, ImplerException {
+        if (Modifier.isFinal(baseClass.getModifiers()))
+            throw new ImplerException();
+        writer.append("package " + baseClass.getPackage().getName() + ";\n");
         String head = "class " + baseClass.getSimpleName() + "Impl ";
         if (baseClass.isInterface()) head += "implements " + baseClass.getCanonicalName() + " { ";
         else head += "extends " + baseClass.getCanonicalName() + " { ";
@@ -42,10 +75,18 @@ public class Implementor {
 
     }
 
-    private void implementConstructor(Writer writer) throws IOException{
+    private void implementConstructor(Writer writer) throws IOException, ImplerException {
         if (baseClass.getDeclaredConstructors().length == 0)
             return;
-        Constructor constructor = baseClass.getDeclaredConstructors()[0];
+        Constructor[] constructors = baseClass.getDeclaredConstructors();
+        Constructor constructor = null;
+        for (int i = 0; i < constructors.length; ++i)
+            if (!Modifier.isPrivate(constructors[i].getModifiers())) {
+                constructor = constructors[i];
+                break;
+            }
+        if (constructor == null)
+            throw new ImplerException();
         writer.append(SPACE).append(printDeclarationOfConstructor(constructor)).append(" {\n");
 
         final int ALPHABET = 26;
@@ -61,6 +102,7 @@ public class Implementor {
         }
         sb.append(");");
         String superStr = "super" + sb.toString();
+
         writer.append(SPACE).append(SPACE).append(superStr + "\n");
         writer.append(SPACE).append("}\n\n");
     }
@@ -70,6 +112,7 @@ public class Implementor {
         printModifiers(sb, constructor);
         sb.append(baseClass.getSimpleName() + "Impl");
         printParameters(sb, constructor);
+        printExceptions(sb, constructor);
         return sb.toString();
     }
 
@@ -113,7 +156,7 @@ public class Implementor {
         sb.append(')');
     }
 
-    private void printExceptions(StringBuilder sb, Method m) {
+    private void printExceptions(StringBuilder sb, Executable m) {
         Type[] exceptions = m.getGenericExceptionTypes();
         if (exceptions.length > 0) {
             sb.append(" throws ");
@@ -225,6 +268,7 @@ public class Implementor {
         defaults.put(long.class, "0L");
         defaults.put(float.class, "0f");
         defaults.put(double.class, "0d");
+        defaults.put(void.class, "");
         DEFAULT_VALUES = Collections.unmodifiableMap(defaults);
     }
 
@@ -232,20 +276,21 @@ public class Implementor {
         return DEFAULT_VALUES.get(type);
     }
 
-    public static void main(String[] args) throws ClassNotFoundException {
+
+    public static void main(String[] args) throws ClassNotFoundException,ImplerException {
         //Class c = Class.forName(args[0]);
         //Class c = NavigableSet.class;
-
-        Class c = NavigableSet.class;
         try {
+            Class c = void.class;
             Writer wr = new PrintWriter(new File(c.getSimpleName() + "Impl" + ".java"));
             new Implementor(c).implement(wr);
             wr.close();
         } catch (IOException e) {
+            System.out.println("exception");
         }
     }
 
     public static abstract class ClDef {
-        public abstract int f();
+        public abstract void f();
     }
 }
