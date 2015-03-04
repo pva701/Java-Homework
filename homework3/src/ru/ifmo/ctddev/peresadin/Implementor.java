@@ -91,20 +91,28 @@ public class Implementor implements Impler {
 
         final int ALPHABET = 26;
         StringBuilder sb = new StringBuilder();
-        sb.append("(");
         int args = constructor.getGenericParameterTypes().length;
-        for (int j = 0; j < args; j++) {
-            String varName = "" + (char)('a' + j % ALPHABET);
-            if (j / ALPHABET > 0) varName += j / ALPHABET;
-            sb.append(varName);
-            if (j + 1 != args)
-                sb.append(',');
-        }
-        sb.append(");");
+        String[] types = new String[args];
+        for (int i = 0; i < args; ++i) types[i] = "";
+        printParameters(sb, types);
+        sb.append(";");
         String superStr = "super" + sb.toString();
 
         writer.append(SPACE).append(SPACE).append(superStr + "\n");
         writer.append(SPACE).append("}\n\n");
+    }
+
+    private void printParameters(StringBuilder sb, String[] types) {
+        final int ALPHABET = 26;
+        sb.append('(');
+        for (int j = 0; j < types.length; j++) {
+            String varName = "" + (char)('a' + j % ALPHABET);
+            if (j / ALPHABET > 0) varName += (char)('0' + j / ALPHABET + 1);
+            sb.append(types[j]).append(" ").append(varName);
+            if (j < types.length - 1)
+                sb.append(',');
+        }
+        sb.append(')');
     }
 
     public String printDeclarationOfConstructor(Constructor constructor) {
@@ -142,18 +150,12 @@ public class Implementor implements Impler {
     }
 
     private void printParameters(StringBuilder sb, Executable m) {
-        final int ALPHABET = 26;
-        sb.append('(');
+        int types = m.getGenericParameterTypes().length;
         Type[] params = m.getGenericParameterTypes();
-        for (int j = 0; j < params.length; j++) {
-            String varName = "" + (char)('a' + j % ALPHABET);
-            if (j / ALPHABET > 0) varName += j / ALPHABET;
-            String param = params[j].getTypeName();
-            sb.append(param).append(" ").append(varName);
-            if (j < params.length - 1)
-                sb.append(',');
-        }
-        sb.append(')');
+        String[] typesArr = new String[types];
+        for (int i = 0; i < types; ++i)
+            typesArr[i] = params[i].getTypeName();
+        printParameters(sb, typesArr);
     }
 
     private void printExceptions(StringBuilder sb, Executable m) {
@@ -281,7 +283,7 @@ public class Implementor implements Impler {
         //Class c = Class.forName(args[0]);
         //Class c = NavigableSet.class;
         try {
-            Class c = void.class;
+            Class c = Cl.class;
             Writer wr = new PrintWriter(new File(c.getSimpleName() + "Impl" + ".java"));
             new Implementor(c).implement(wr);
             wr.close();
@@ -290,7 +292,6 @@ public class Implementor implements Impler {
         }
     }
 
-    public static abstract class ClDef {
-        public abstract void f();
+    public static abstract class Cl implements NavigableSet<Integer> {
     }
 }
