@@ -1,7 +1,13 @@
 package ru.ifmo.ctddev.peresadin;
 import info.kgeorgiy.java.advanced.implementor.Impler;
 import info.kgeorgiy.java.advanced.implementor.ImplerException;
+import org.junit.Assert;
 
+import javax.tools.JavaCompiler;
+import javax.tools.ToolProvider;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 import java.io.*;
@@ -19,7 +25,13 @@ import java.util.*;
  */
 
 public class Implementor implements Impler {
+    /**
+     * Implemented class
+     */
     private Class baseClass;
+    /**
+     * Tab for generating code.
+     */
     public static String SPACE = "    ";
 
     /**
@@ -377,6 +389,9 @@ public class Implementor implements Impler {
         }
     }
 
+    /**
+     * Default values for types.
+     */
     private static final Map<Class<?>, String> DEFAULT_VALUES;
 
     static {
@@ -409,36 +424,83 @@ public class Implementor implements Impler {
      * @throws ClassNotFoundException if it wasn't possible load class
      * @throws ImplerException if it wasn't possible implement class
      */
-
     public static void main(String[] args) throws ClassNotFoundException, ImplerException {
         Class c = Class.forName(args[0]);
-        //Class c = NavigableSet.class;
-        //Class c = javax.sql.rowset.CachedRowSet.class;
+        try (
+            Writer wr = new BufferedWriter(new FileWriter(c.getSimpleName() + "Impl.java")))
+        {
+            new Implementor(c).implement(wr);
+        } catch (IOException e){
+            System.out.println("exception file");
+        }
+
         if (args.length == 2) {
             if (!args[1].endsWith(".jar")) {
                 throw new IllegalArgumentException("Expected .jar file!");
             }
+
+            String classFileName = c.getSimpleName() + "Impl.class";
+            String packageName = c.getPackage().getName();
+            String root = packageName.substring(0, packageName.indexOf('.'));
+            String fullDir = "." + File.separatorChar + c.getPackage().getName().replace('.', File.separatorChar);
+            File f = new File(fullDir);
+            f.mkdirs();
+            compile(c.getSimpleName() + "Impl.java");
+            File fullPathClassFile = new File(f.getAbsolutePath() + File.separatorChar + classFileName);
             try {
+                Files.move(new File(classFileName).toPath(), fullPathClassFile.toPath());
+            } catch (IOException e) {
+                e.printStackTrace();
+                System.out.println("move exception!");
+            } finally {
+                clean(new File(root));
+            }
+
+            try (
                 JarOutputStream jar = new JarOutputStream(new FileOutputStream(args[1]));
-                JarEntry entry = new JarEntry(c.getSimpleName() + "Impl.java");
+                BufferedInputStream in = new BufferedInputStream(new FileInputStream(root))
+            ) {
+                JarEntry entry = new JarEntry(classFileName);
                 jar.putNextEntry(entry);
-                Writer wr = new BufferedWriter(new OutputStreamWriter(jar));
-                new Implementor(c).implement(wr);
-                wr.flush();
+                byte[] buffer = new byte[1024];
+                while (true)
+                {
+                    int count = in.read(buffer);
+                    if (count == -1)
+                        break;
+                    jar.write(buffer, 0, count);
+                }
                 jar.closeEntry();
                 jar.flush();
-                jar.close();
             } catch (IOException e){
                 System.out.println("exception jar");
-            }
-        } else {
-            try {
-                Writer wr = new BufferedWriter(new FileWriter(c.getSimpleName() + "Impl.java"));
-                new Implementor(c).implement(wr);
-                wr.close();
-            } catch (IOException e){
-                System.out.println("exception file");
+                e.printStackTrace();
+            } finally {
+                clean(new File(root));
             }
         }
+    }
+
+    private static void compile(String file) {
+        final JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        Assert.assertNotNull("Could not find java compiler, include tools.jar to classpath", compiler);
+        ArrayList<String> args = new ArrayList<>();
+        args.add(file);
+        args.add("-cp");
+        args.add(System.getProperty("java.class.path"));
+        final int exitCode = compiler.run(null, null, null, args.toArray(new String[args.size()]));
+        Assert.assertEquals("Compiler exit code", 0, exitCode);
+    }
+
+    private static void clean(final File file) {
+        if (file.isDirectory()) {
+            final File[] files = file.listFiles();
+            if (files != null) {
+                for (final File child : files) {
+                    clean(child);
+                }
+            }
+        }
+        file.delete();
     }
 }
