@@ -14,6 +14,8 @@ import java.util.*;
  *
  * <p>{@code Implementor} implements all unimplemented abstract methods of class.
  * No support of generic classes, but supported generic methods.</p>
+ *
+ * @author Ilya Peresadin
  */
 
 public class Implementor implements Impler {
@@ -21,17 +23,17 @@ public class Implementor implements Impler {
     public static String SPACE = "    ";
 
     /**
-     * Constructor of class.
-     * @param cl the class, which need to implement.
+     * Constructs a new instance.
+     * @param implClass the class, which need to implement.
      */
-    public Implementor(Class cl) {
-        this.baseClass = cl;
+    public Implementor(Class implClass) {
+        this.baseClass = implClass;
     }
 
     /**
-     * @param token type token to create implementation for.
-     * @param root root directory.
-     * @throws ImplerException
+     * @param token type token to create implementation for
+     * @param root root directory
+     * @throws ImplerException if it wasn't possible implement of class
      */
     @Override
     public void implement(Class<?> token, File root) throws ImplerException {
@@ -58,11 +60,10 @@ public class Implementor implements Impler {
     }
 
     /**
-     * Implements {@code baseClass} and write implementation in {@code writer}.
-     *
-     * @param  writer TODO
+     * Implements class and write implementation in {@code writer}.
+     * @param  writer - {@link java.io.Writer} which consumes generated implementation code
      * @throws java.io.IOException if some problems with {@code writer}
-     * @throws info.kgeorgiy.java.advanced.implementor.ImplerException if {@code baseClass}
+     * @throws info.kgeorgiy.java.advanced.implementor.ImplerException if implemented class
      * is final, primitive or contains only private constructors.
      */
     public void implement(Writer writer) throws IOException, ImplerException {
@@ -95,9 +96,9 @@ public class Implementor implements Impler {
     }
 
     /**
-     * Write in {@code writer} implementation of non-private constructor of {@code baseClass}
-     * or throws ImplerException if {@code baseClass} contains only private constructors.
-     * @param writer TODO
+     * Writes in {@code writer} implementation of non-private constructor of {@code baseClass}
+     * or throws ImplerException if implemented class contains only private constructors.
+     * @param writer {@link java.io.Writer} which consumes generated implementation code
      * @throws IOException if some problems with {@code writer}
      * @throws ImplerException if has only private constructors
      */
@@ -127,6 +128,12 @@ public class Implementor implements Impler {
         writer.append(SPACE).append("}\n\n");
     }
 
+    /**
+     * Appends in {@link java.lang.StringBuilder} arguments and their types of method.
+     * Arguments will be called a, b,...,z, a1, b1 etc.
+     * @param sb the {@code StringBuilder} in which will be stored result
+     * @param types types of arguments
+     */
     private void printParameters(StringBuilder sb, String[] types) {
         final int ALPHABET = 26;
         sb.append('(');
@@ -143,6 +150,11 @@ public class Implementor implements Impler {
         sb.append(')');
     }
 
+    /**
+     * Implements declaration of constructor.
+     * @param constructor the constructor, which it is necessary to generate declaration
+     * @return the declaration of {@code constructor}
+     */
     public String printDeclarationOfConstructor(Constructor constructor) {
         StringBuilder sb = new StringBuilder();
         printModifiers(sb, constructor);
@@ -152,18 +164,28 @@ public class Implementor implements Impler {
         return sb.toString();
     }
 
-    private String printDeclarationOfMethod(Method m) {
+    /**
+     * Implements declaration of method.
+     * @param method the method, which it is necessary to generate declaration
+     * @return the declaration of {@code method}
+     */
+    private String printDeclarationOfMethod(Method method) {
         StringBuilder sb = new StringBuilder();
-        printModifiers(sb, m);
-        printGenericTypes(sb, m);
-        printHeader(sb, m);
-        printParameters(sb, m);
+        printModifiers(sb, method);
+        printGenericTypes(sb, method);
+        printHeader(sb, method);
+        printParameters(sb, method);
         //printExceptions(sb, m);
         return sb.toString();
     }
 
-    private void printGenericTypes(StringBuilder sb, Method m) {
-        TypeVariable<?>[] typeparms = m.getTypeParameters();
+    /**
+     * TODO
+     * @param sb the {@code StringBuilder} in which will be stored result
+     * @param method
+     */
+    private void printGenericTypes(StringBuilder sb, Method method) {
+        TypeVariable<?>[] typeparms = method.getTypeParameters();
         if (typeparms.length > 0) {
             boolean first = true;
             sb.append("<");
@@ -178,24 +200,39 @@ public class Implementor implements Impler {
         }
     }
 
-    private void printModifiers(StringBuilder sb, Executable m) {
-        if (Modifier.isPublic(m.getModifiers())) {
+    /**
+     * Prints modifiers of executable object in {@code StringBuilder}.
+     * @param sb the {@code StringBuilder} in which will be stored result
+     * @param exec method or constructor, which it is necessary print modifiers
+     */
+    private void printModifiers(StringBuilder sb, Executable exec) {
+        if (Modifier.isPublic(exec.getModifiers())) {
             sb.append("public ");
-        } else if (Modifier.isProtected(m.getModifiers())) {
+        } else if (Modifier.isProtected(exec.getModifiers())) {
             sb.append("protected ");
-        } if (Modifier.isPrivate(m.getModifiers()))
+        } if (Modifier.isPrivate(exec.getModifiers()))
             sb.append("private ");
     }
 
-    private void printHeader(StringBuilder sb, Method m) {
-        Type genRetType = m.getGenericReturnType();
+    /**
+     * Prints result type and name of method in {@code StringBuilder}.
+     * @param sb the {@code StringBuilder} in which will be stored result
+     * @param method the method, which it is necessary to generate result type and name
+     */
+    private void printHeader(StringBuilder sb, Method method) {
+        Type genRetType = method.getGenericReturnType();
         sb.append(genRetType.getTypeName()).append(' ');
-        sb.append(m.getName());
+        sb.append(method.getName());
     }
 
-    private void printParameters(StringBuilder sb, Executable m) {
-        int types = m.getGenericParameterTypes().length;
-        Type[] params = m.getGenericParameterTypes();
+    /**
+     * Prints parameters of method or constructor in {@code StringBuilder}
+     * @param sb the {@code StringBuilder} in which will be stored result
+     * @param exec method or constructor, which it is necessary print parameters
+     */
+    private void printParameters(StringBuilder sb, Executable exec) {
+        int types = exec.getGenericParameterTypes().length;
+        Type[] params = exec.getGenericParameterTypes();
         String[] typesArr = new String[types];
         for (int i = 0; i < types; ++i) {
             typesArr[i] = params[i].getTypeName();
@@ -203,8 +240,13 @@ public class Implementor implements Impler {
         printParameters(sb, typesArr);
     }
 
-    private void printExceptions(StringBuilder sb, Executable m) {
-        Type[] exceptions = m.getGenericExceptionTypes();
+    /**
+     * Prints exceptions of method or constructor in {@code StringBuilder}
+     * @param sb the {@code StringBuilder} in which will be stored result
+     * @param exec method or constructor, which it is necessary print exceptions
+     */
+    private void printExceptions(StringBuilder sb, Executable exec) {
+        Type[] exceptions = exec.getGenericExceptionTypes();
         if (exceptions.length > 0) {
             sb.append(" throws ");
             for (int k = 0; k < exceptions.length; k++) {
@@ -216,6 +258,12 @@ public class Implementor implements Impler {
         }
     }
 
+    /**
+     * Tells whether or not this method {@code b} is implementation of method {@code a}.
+     * @param a the first method
+     * @param b the second method
+     * @return {@code true} if method {@code b} is implementation of method {@code a}
+     */
     public static boolean bIsImplementationOfA(Method a, Method b) {
         int aMod = a.getModifiers();
         if (Modifier.isAbstract(aMod) &&
@@ -236,6 +284,11 @@ public class Implementor implements Impler {
         return false;
     }
 
+    /**
+     * Gets all unimplemented abstract methods of class.
+     * @param c the class, from which necessary gets unimplemented methods.
+     * @param methods the container, in which all unimplemented methods will be added
+     */
     private void getNotImplementedMethods(Class c, List<Method> methods) {
         if (c == null)
             return;
