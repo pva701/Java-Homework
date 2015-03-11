@@ -468,11 +468,7 @@ class CachedRowSetImpl implements javax.sql.rowset.CachedRowSet {
         return false;
     }
 
-    public java.math.BigDecimal getBigDecimal(int a,int b) {
-        return null;
-    }
-
-    public java.math.BigDecimal getBigDecimal(java.lang.String a) {
+    public java.math.BigDecimal getBigDecimal(int a) {
         return null;
     }
 
@@ -480,7 +476,11 @@ class CachedRowSetImpl implements javax.sql.rowset.CachedRowSet {
         return null;
     }
 
-    public java.math.BigDecimal getBigDecimal(int a) {
+    public java.math.BigDecimal getBigDecimal(int a,int b) {
+        return null;
+    }
+
+    public java.math.BigDecimal getBigDecimal(java.lang.String a) {
         return null;
     }
 
@@ -492,19 +492,19 @@ class CachedRowSetImpl implements javax.sql.rowset.CachedRowSet {
         return null;
     }
 
-    public java.io.InputStream getUnicodeStream(java.lang.String a) {
-        return null;
-    }
-
     public java.io.InputStream getUnicodeStream(int a) {
         return null;
     }
 
-    public java.io.InputStream getBinaryStream(java.lang.String a) {
+    public java.io.InputStream getUnicodeStream(java.lang.String a) {
         return null;
     }
 
     public java.io.InputStream getBinaryStream(int a) {
+        return null;
+    }
+
+    public java.io.InputStream getBinaryStream(java.lang.String a) {
         return null;
     }
 
@@ -528,11 +528,43 @@ class CachedRowSetImpl implements javax.sql.rowset.CachedRowSet {
         return 0;
     }
 
+    public java.io.Reader getCharacterStream(int a) {
+        return null;
+    }
+
     public java.io.Reader getCharacterStream(java.lang.String a) {
         return null;
     }
 
-    public java.io.Reader getCharacterStream(int a) {
+    public java.sql.Time getTime(java.lang.String a) {
+        return null;
+    }
+
+    public java.sql.Time getTime(int a,java.util.Calendar b) {
+        return null;
+    }
+
+    public java.sql.Time getTime(java.lang.String a,java.util.Calendar b) {
+        return null;
+    }
+
+    public java.sql.Time getTime(int a) {
+        return null;
+    }
+
+    public java.sql.Date getDate(int a) {
+        return null;
+    }
+
+    public java.sql.Date getDate(int a,java.util.Calendar b) {
+        return null;
+    }
+
+    public java.sql.Date getDate(java.lang.String a) {
+        return null;
+    }
+
+    public java.sql.Date getDate(java.lang.String a,java.util.Calendar b) {
         return null;
     }
 
@@ -604,11 +636,11 @@ class CachedRowSetImpl implements javax.sql.rowset.CachedRowSet {
         return false;
     }
 
-    public void updateNull(int a) {
+    public void updateNull(java.lang.String a) {
         return ;
     }
 
-    public void updateNull(java.lang.String a) {
+    public void updateNull(int a) {
         return ;
     }
 
@@ -644,11 +676,11 @@ class CachedRowSetImpl implements javax.sql.rowset.CachedRowSet {
         return ;
     }
 
-    public void updateLong(java.lang.String a,long b) {
+    public void updateLong(int a,long b) {
         return ;
     }
 
-    public void updateLong(int a,long b) {
+    public void updateLong(java.lang.String a,long b) {
         return ;
     }
 
@@ -660,11 +692,11 @@ class CachedRowSetImpl implements javax.sql.rowset.CachedRowSet {
         return ;
     }
 
-    public void updateDouble(java.lang.String a,double b) {
+    public void updateDouble(int a,double b) {
         return ;
     }
 
-    public void updateDouble(int a,double b) {
+    public void updateDouble(java.lang.String a,double b) {
         return ;
     }
 
@@ -676,15 +708,11 @@ class CachedRowSetImpl implements javax.sql.rowset.CachedRowSet {
         return ;
     }
 
-    public void updateString(java.lang.String a,java.lang.String b) {
-        return ;
-    }
-
     public void updateString(int a,java.lang.String b) {
         return ;
     }
 
-    public void updateDate(int a,java.sql.Date b) {
+    public void updateString(java.lang.String a,java.lang.String b) {
         return ;
     }
 
@@ -692,7 +720,7 @@ class CachedRowSetImpl implements javax.sql.rowset.CachedRowSet {
         return ;
     }
 
-    public void updateTime(java.lang.String a,java.sql.Time b) {
+    public void updateDate(int a,java.sql.Date b) {
         return ;
     }
 
@@ -700,7 +728,7 @@ class CachedRowSetImpl implements javax.sql.rowset.CachedRowSet {
         return ;
     }
 
-    public void updateTimestamp(int a,java.sql.Timestamp b) {
+    public void updateTime(java.lang.String a,java.sql.Time b) {
         return ;
     }
 
@@ -708,11 +736,15 @@ class CachedRowSetImpl implements javax.sql.rowset.CachedRowSet {
         return ;
     }
 
+    public void updateTimestamp(int a,java.sql.Timestamp b) {
+        return ;
+    }
+
     public void updateAsciiStream(java.lang.String a,java.io.InputStream b,long c) {
         return ;
     }
 
-    public void updateAsciiStream(java.lang.String a,java.io.InputStream b,int c) {
+    public void updateAsciiStream(int a,java.io.InputStream b) {
         return ;
     }
 
@@ -728,11 +760,11 @@ class CachedRowSetImpl implements javax.sql.rowset.CachedRowSet {
         return ;
     }
 
-    public void updateAsciiStream(int a,java.io.InputStream b) {
+    public void updateAsciiStream(java.lang.String a,java.io.InputStream b,int c) {
         return ;
     }
 
-    public void updateBinaryStream(int a,java.io.InputStream b,long c) {
+    public void updateBinaryStream(java.lang.String a,java.io.InputStream b) {
         return ;
     }
 
@@ -744,6 +776,10 @@ class CachedRowSetImpl implements javax.sql.rowset.CachedRowSet {
         return ;
     }
 
+    public void updateBinaryStream(int a,java.io.InputStream b,long c) {
+        return ;
+    }
+
     public void updateBinaryStream(int a,java.io.InputStream b) {
         return ;
     }
@@ -752,11 +788,11 @@ class CachedRowSetImpl implements javax.sql.rowset.CachedRowSet {
         return ;
     }
 
-    public void updateBinaryStream(java.lang.String a,java.io.InputStream b) {
+    public void updateCharacterStream(int a,java.io.Reader b,long c) {
         return ;
     }
 
-    public void updateCharacterStream(int a,java.io.Reader b,long c) {
+    public void updateCharacterStream(java.lang.String a,java.io.Reader b,long c) {
         return ;
     }
 
@@ -765,10 +801,6 @@ class CachedRowSetImpl implements javax.sql.rowset.CachedRowSet {
     }
 
     public void updateCharacterStream(java.lang.String a,java.io.Reader b) {
-        return ;
-    }
-
-    public void updateCharacterStream(java.lang.String a,java.io.Reader b,long c) {
         return ;
     }
 
@@ -784,7 +816,7 @@ class CachedRowSetImpl implements javax.sql.rowset.CachedRowSet {
         return ;
     }
 
-    public void updateObject(int a,java.lang.Object b,int c) {
+    public void updateObject(java.lang.String a,java.lang.Object b) {
         return ;
     }
 
@@ -792,7 +824,7 @@ class CachedRowSetImpl implements javax.sql.rowset.CachedRowSet {
         return ;
     }
 
-    public void updateObject(java.lang.String a,java.lang.Object b) {
+    public void updateObject(int a,java.lang.Object b,int c) {
         return ;
     }
 
@@ -852,7 +884,7 @@ class CachedRowSetImpl implements javax.sql.rowset.CachedRowSet {
         return ;
     }
 
-    public void updateBlob(java.lang.String a,java.io.InputStream b,long c) {
+    public void updateBlob(java.lang.String a,java.io.InputStream b) {
         return ;
     }
 
@@ -864,7 +896,7 @@ class CachedRowSetImpl implements javax.sql.rowset.CachedRowSet {
         return ;
     }
 
-    public void updateBlob(java.lang.String a,java.io.InputStream b) {
+    public void updateBlob(int a,java.io.InputStream b,long c) {
         return ;
     }
 
@@ -872,7 +904,7 @@ class CachedRowSetImpl implements javax.sql.rowset.CachedRowSet {
         return ;
     }
 
-    public void updateBlob(int a,java.io.InputStream b,long c) {
+    public void updateBlob(java.lang.String a,java.io.InputStream b,long c) {
         return ;
     }
 
@@ -884,11 +916,7 @@ class CachedRowSetImpl implements javax.sql.rowset.CachedRowSet {
         return ;
     }
 
-    public void updateClob(int a,java.io.Reader b) {
-        return ;
-    }
-
-    public void updateClob(java.lang.String a,java.io.Reader b) {
+    public void updateClob(int a,java.sql.Clob b) {
         return ;
     }
 
@@ -896,7 +924,11 @@ class CachedRowSetImpl implements javax.sql.rowset.CachedRowSet {
         return ;
     }
 
-    public void updateClob(int a,java.sql.Clob b) {
+    public void updateClob(java.lang.String a,java.io.Reader b) {
+        return ;
+    }
+
+    public void updateClob(int a,java.io.Reader b) {
         return ;
     }
 
@@ -908,19 +940,19 @@ class CachedRowSetImpl implements javax.sql.rowset.CachedRowSet {
         return ;
     }
 
-    public java.sql.RowId getRowId(java.lang.String a) {
-        return null;
-    }
-
     public java.sql.RowId getRowId(int a) {
         return null;
     }
 
-    public void updateRowId(int a,java.sql.RowId b) {
-        return ;
+    public java.sql.RowId getRowId(java.lang.String a) {
+        return null;
     }
 
     public void updateRowId(java.lang.String a,java.sql.RowId b) {
+        return ;
+    }
+
+    public void updateRowId(int a,java.sql.RowId b) {
         return ;
     }
 
@@ -928,23 +960,11 @@ class CachedRowSetImpl implements javax.sql.rowset.CachedRowSet {
         return 0;
     }
 
-    public void updateNString(java.lang.String a,java.lang.String b) {
-        return ;
-    }
-
     public void updateNString(int a,java.lang.String b) {
         return ;
     }
 
-    public void updateNClob(int a,java.io.Reader b) {
-        return ;
-    }
-
-    public void updateNClob(java.lang.String a,java.io.Reader b) {
-        return ;
-    }
-
-    public void updateNClob(java.lang.String a,java.io.Reader b,long c) {
+    public void updateNString(java.lang.String a,java.lang.String b) {
         return ;
     }
 
@@ -952,7 +972,15 @@ class CachedRowSetImpl implements javax.sql.rowset.CachedRowSet {
         return ;
     }
 
-    public void updateNClob(java.lang.String a,java.sql.NClob b) {
+    public void updateNClob(int a,java.io.Reader b) {
+        return ;
+    }
+
+    public void updateNClob(java.lang.String a,java.io.Reader b,long c) {
+        return ;
+    }
+
+    public void updateNClob(java.lang.String a,java.io.Reader b) {
         return ;
     }
 
@@ -960,11 +988,15 @@ class CachedRowSetImpl implements javax.sql.rowset.CachedRowSet {
         return ;
     }
 
-    public java.sql.NClob getNClob(java.lang.String a) {
-        return null;
+    public void updateNClob(java.lang.String a,java.sql.NClob b) {
+        return ;
     }
 
     public java.sql.NClob getNClob(int a) {
+        return null;
+    }
+
+    public java.sql.NClob getNClob(java.lang.String a) {
         return null;
     }
 
@@ -976,23 +1008,19 @@ class CachedRowSetImpl implements javax.sql.rowset.CachedRowSet {
         return null;
     }
 
-    public void updateSQLXML(java.lang.String a,java.sql.SQLXML b) {
-        return ;
-    }
-
     public void updateSQLXML(int a,java.sql.SQLXML b) {
         return ;
     }
 
-    public java.lang.String getNString(int a) {
-        return null;
+    public void updateSQLXML(java.lang.String a,java.sql.SQLXML b) {
+        return ;
     }
 
     public java.lang.String getNString(java.lang.String a) {
         return null;
     }
 
-    public java.io.Reader getNCharacterStream(int a) {
+    public java.lang.String getNString(int a) {
         return null;
     }
 
@@ -1000,15 +1028,11 @@ class CachedRowSetImpl implements javax.sql.rowset.CachedRowSet {
         return null;
     }
 
-    public void updateNCharacterStream(java.lang.String a,java.io.Reader b,long c) {
-        return ;
+    public java.io.Reader getNCharacterStream(int a) {
+        return null;
     }
 
     public void updateNCharacterStream(int a,java.io.Reader b) {
-        return ;
-    }
-
-    public void updateNCharacterStream(java.lang.String a,java.io.Reader b) {
         return ;
     }
 
@@ -1016,15 +1040,23 @@ class CachedRowSetImpl implements javax.sql.rowset.CachedRowSet {
         return ;
     }
 
+    public void updateNCharacterStream(java.lang.String a,java.io.Reader b,long c) {
+        return ;
+    }
+
+    public void updateNCharacterStream(java.lang.String a,java.io.Reader b) {
+        return ;
+    }
+
     public boolean last() {
         return false;
     }
 
-    public java.sql.Timestamp getTimestamp(int a) {
+    public java.sql.Timestamp getTimestamp(java.lang.String a) {
         return null;
     }
 
-    public java.sql.Timestamp getTimestamp(java.lang.String a) {
+    public java.sql.Timestamp getTimestamp(int a) {
         return null;
     }
 
@@ -1033,38 +1065,6 @@ class CachedRowSetImpl implements javax.sql.rowset.CachedRowSet {
     }
 
     public java.sql.Timestamp getTimestamp(int a,java.util.Calendar b) {
-        return null;
-    }
-
-    public java.sql.Time getTime(java.lang.String a) {
-        return null;
-    }
-
-    public java.sql.Time getTime(int a) {
-        return null;
-    }
-
-    public java.sql.Time getTime(int a,java.util.Calendar b) {
-        return null;
-    }
-
-    public java.sql.Time getTime(java.lang.String a,java.util.Calendar b) {
-        return null;
-    }
-
-    public java.sql.Date getDate(int a) {
-        return null;
-    }
-
-    public java.sql.Date getDate(int a,java.util.Calendar b) {
-        return null;
-    }
-
-    public java.sql.Date getDate(java.lang.String a,java.util.Calendar b) {
-        return null;
-    }
-
-    public java.sql.Date getDate(java.lang.String a) {
         return null;
     }
 

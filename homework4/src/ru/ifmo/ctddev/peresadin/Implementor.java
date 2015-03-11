@@ -8,12 +8,14 @@ import javax.tools.ToolProvider;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 import java.io.*;
 import java.lang.reflect.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.jar.Manifest;
 
 /**
  * {@code Implementor} generate default implementation of abstract classes and interfaces.
@@ -442,7 +444,7 @@ public class Implementor implements Impler {
             String classFileName = c.getSimpleName() + "Impl.class";
             String packageName = c.getPackage().getName();
             String root = packageName.substring(0, packageName.indexOf('.'));
-            String fullDir = "." + File.separatorChar + c.getPackage().getName().replace('.', File.separatorChar);
+            String fullDir = c.getPackage().getName().replace('.', File.separatorChar);
             File f = new File(fullDir);
             f.mkdirs();
             compile(c.getSimpleName() + "Impl.java");
@@ -452,15 +454,15 @@ public class Implementor implements Impler {
             } catch (IOException e) {
                 e.printStackTrace();
                 System.out.println("move exception!");
-            } finally {
-                clean(new File(root));
             }
 
+            Manifest manifest = new Manifest();
+            manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
             try (
-                JarOutputStream jar = new JarOutputStream(new FileOutputStream(args[1]));
-                BufferedInputStream in = new BufferedInputStream(new FileInputStream(root))
+                JarOutputStream jar = new JarOutputStream(new FileOutputStream(args[1]), manifest);
+                BufferedInputStream in = new BufferedInputStream(new FileInputStream(fullPathClassFile));
             ) {
-                JarEntry entry = new JarEntry(classFileName);
+                JarEntry entry = new JarEntry(fullDir + File.separatorChar + classFileName);
                 jar.putNextEntry(entry);
                 byte[] buffer = new byte[1024];
                 while (true)
