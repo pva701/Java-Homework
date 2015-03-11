@@ -180,9 +180,9 @@ public class Implementor implements Impler {
     }
 
     /**
-     * TODO
+     * Generates generic types for method.
      * @param sb the {@code StringBuilder} in which will be stored result
-     * @param method
+     * @param method the method for which it is necessary to generate generic types
      */
     private void printGenericTypes(StringBuilder sb, Method method) {
         TypeVariable<?>[] typeparms = method.getTypeParameters();
@@ -259,7 +259,7 @@ public class Implementor implements Impler {
     }
 
     /**
-     * Tells whether or not this method {@code b} is implementation of method {@code a}.
+     * Checks whether or not method {@code b} is implementation of method {@code a}.
      * @param a the first method
      * @param b the second method
      * @return {@code true} if method {@code b} is implementation of method {@code a}
@@ -286,6 +286,7 @@ public class Implementor implements Impler {
 
     /**
      * Gets all unimplemented abstract methods of class.
+     * Probably some methods will repeat.
      * @param c the class, from which necessary gets unimplemented methods.
      * @param methods the container, in which all unimplemented methods will be added
      */
@@ -302,6 +303,10 @@ public class Implementor implements Impler {
             safeAdd(methods, m);
     }
 
+    /**
+     * Gets all unimplemented abstract methods of implemented class and remove repetitions.
+     * @return list of unimplemented abstract methods
+     */
     public List<Method> getNotImplementedMethods() {
         List<Method> methods = new ArrayList<>();
         getNotImplementedMethods(baseClass, methods);
@@ -331,17 +336,33 @@ public class Implementor implements Impler {
         return publics;
     }
 
+    /**
+     * Checks whether or not method {@code m1} and method {@code m2} have equal names and types.
+     * @param m1 first method
+     * @param m2 second method
+     * @return {@code true} if method equal
+     */
     private boolean methodEquals(Method m1, Method m2) {
         return toSimpleStr(m1).equals(toSimpleStr(m2));
     }
 
-    private String toSimpleStr(Method m1) {
+    /**
+     * Generates simple declaration of method, which will look like T0 name(T1, T2, ...).
+     * @param method the method, which it is necessary to generate simple declaration
+     * @return simple declaration of method
+     */
+    private String toSimpleStr(Method method) {
         StringBuilder sb = new StringBuilder();
-        printHeader(sb, m1);
-        printParameters(sb, m1);
+        printHeader(sb, method);
+        printParameters(sb, method);
         return sb.toString();
     }
 
+    /**
+     * Adds {@code method} in list if it is abstract or remove all method from list, which {@code method} implement.
+     * @param methods list of abstract methods of class
+     * @param method next abstract method
+     */
     private void safeAdd(List<Method> methods, Method method) {
         int mod = method.getModifiers();
         if (Modifier.isAbstract(mod)) {
@@ -373,9 +394,21 @@ public class Implementor implements Impler {
         DEFAULT_VALUES = Collections.unmodifiableMap(defaults);
     }
 
+    /**
+     * Find default value for type.
+     * @param type the required type
+     * @return default value for type
+     */
     private static String getDefaultValue(Class<?> type) {
         return DEFAULT_VALUES.get(type);
     }
+
+    /**
+     * Enry point in the program.
+     * @param args command lines arguments
+     * @throws ClassNotFoundException if it wasn't possible load class
+     * @throws ImplerException if it wasn't possible implement class
+     */
 
     public static void main(String[] args) throws ClassNotFoundException, ImplerException {
         Class c = Class.forName(args[0]);
