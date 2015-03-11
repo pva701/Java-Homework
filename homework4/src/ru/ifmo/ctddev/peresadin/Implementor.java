@@ -24,7 +24,7 @@ public class Implementor implements Impler {
 
     /**
      * Constructs a new instance.
-     * @param implClass the class, which need to implement.
+     * @param implClass the class for which need to implement.
      */
     public Implementor(Class implClass) {
         this.baseClass = implClass;
@@ -152,7 +152,7 @@ public class Implementor implements Impler {
 
     /**
      * Implements declaration of constructor.
-     * @param constructor the constructor, which it is necessary to generate declaration
+     * @param constructor the constructor for which it is necessary to generate declaration
      * @return the declaration of {@code constructor}
      */
     public String printDeclarationOfConstructor(Constructor constructor) {
@@ -166,7 +166,7 @@ public class Implementor implements Impler {
 
     /**
      * Implements declaration of method.
-     * @param method the method, which it is necessary to generate declaration
+     * @param method the method for which it is necessary to generate declaration
      * @return the declaration of {@code method}
      */
     private String printDeclarationOfMethod(Method method) {
@@ -203,7 +203,7 @@ public class Implementor implements Impler {
     /**
      * Prints modifiers of executable object in {@code StringBuilder}.
      * @param sb the {@code StringBuilder} in which will be stored result
-     * @param exec method or constructor, which it is necessary print modifiers
+     * @param exec method or constructor for which it is necessary print modifiers
      */
     private void printModifiers(StringBuilder sb, Executable exec) {
         if (Modifier.isPublic(exec.getModifiers())) {
@@ -217,7 +217,7 @@ public class Implementor implements Impler {
     /**
      * Prints result type and name of method in {@code StringBuilder}.
      * @param sb the {@code StringBuilder} in which will be stored result
-     * @param method the method, which it is necessary to generate result type and name
+     * @param method the method for which it is necessary to generate result type and name
      */
     private void printHeader(StringBuilder sb, Method method) {
         Type genRetType = method.getGenericReturnType();
@@ -228,7 +228,7 @@ public class Implementor implements Impler {
     /**
      * Prints parameters of method or constructor in {@code StringBuilder}
      * @param sb the {@code StringBuilder} in which will be stored result
-     * @param exec method or constructor, which it is necessary print parameters
+     * @param exec method or constructor for which it is necessary print parameters
      */
     private void printParameters(StringBuilder sb, Executable exec) {
         int types = exec.getGenericParameterTypes().length;
@@ -243,7 +243,7 @@ public class Implementor implements Impler {
     /**
      * Prints exceptions of method or constructor in {@code StringBuilder}
      * @param sb the {@code StringBuilder} in which will be stored result
-     * @param exec method or constructor, which it is necessary print exceptions
+     * @param exec method or constructor for which it is necessary print exceptions
      */
     private void printExceptions(StringBuilder sb, Executable exec) {
         Type[] exceptions = exec.getGenericExceptionTypes();
@@ -288,7 +288,7 @@ public class Implementor implements Impler {
      * Gets all unimplemented abstract methods of class.
      * Probably some methods will repeat.
      * @param c the class, from which necessary gets unimplemented methods.
-     * @param methods the container, in which all unimplemented methods will be added
+     * @param methods the container for in which all unimplemented methods will be added
      */
     private void getNotImplementedMethods(Class c, List<Method> methods) {
         if (c == null)
@@ -348,7 +348,7 @@ public class Implementor implements Impler {
 
     /**
      * Generates simple declaration of method, which will look like T0 name(T1, T2, ...).
-     * @param method the method, which it is necessary to generate simple declaration
+     * @param method the method for which it is necessary to generate simple declaration
      * @return simple declaration of method
      */
     private String toSimpleStr(Method method) {
