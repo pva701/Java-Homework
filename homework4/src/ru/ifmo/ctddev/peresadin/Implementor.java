@@ -2,27 +2,37 @@ package ru.ifmo.ctddev.peresadin;
 import info.kgeorgiy.java.advanced.implementor.Impler;
 import info.kgeorgiy.java.advanced.implementor.ImplerException;
 
+import java.util.jar.JarEntry;
+import java.util.jar.JarOutputStream;
 import java.io.*;
 import java.lang.reflect.*;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 
 /**
- * Created by pva701 on 3/1/15.
+ * {@code Implementor} generate default implementation of abstract classes and interfaces.
+ *
+ * <p>{@code Implementor} implements all unimplemented abstract methods of class.
+ * No support of generic classes, but supported generic methods.</p>
  */
+
 public class Implementor implements Impler {
     private Class baseClass;
     public static String SPACE = "    ";
 
-    public Implementor() {}
-
+    /**
+     * Constructor of class.
+     * @param cl the class, which need to implement.
+     */
     public Implementor(Class cl) {
         this.baseClass = cl;
     }
 
+    /**
+     * @param token type token to create implementation for.
+     * @param root root directory.
+     * @throws ImplerException
+     */
     @Override
     public void implement(Class<?> token, File root) throws ImplerException {
         if (token.getPackage() == null)
@@ -47,12 +57,21 @@ public class Implementor implements Impler {
         }
     }
 
+    /**
+     * Implements {@code baseClass} and write implementation in {@code writer}.
+     *
+     * @param  writer TODO
+     * @throws java.io.IOException if some problems with {@code writer}
+     * @throws info.kgeorgiy.java.advanced.implementor.ImplerException if {@code baseClass}
+     * is final, primitive or contains only private constructors.
+     */
     public void implement(Writer writer) throws IOException, ImplerException {
-        if (Modifier.isFinal(baseClass.getModifiers()))
+        if (Modifier.isFinal(baseClass.getModifiers())) {
             throw new ImplerException();
+        }
         writer.append("package " + baseClass.getPackage().getName() + ";\n");
         writer.write(
-                "class " + baseClass.getSimpleName() + "Impl " +                        (baseClass.isInterface() ? "implements" : "extends") +
+                "class " + baseClass.getSimpleName() + "Impl " + (baseClass.isInterface() ? "implements" : "extends") +
                         " " + baseClass.getCanonicalName() + " {\n"
         );
 
@@ -75,6 +94,13 @@ public class Implementor implements Impler {
 
     }
 
+    /**
+     * Write in {@code writer} implementation of non-private constructor of {@code baseClass}
+     * or throws ImplerException if {@code baseClass} contains only private constructors.
+     * @param writer TODO
+     * @throws IOException if some problems with {@code writer}
+     * @throws ImplerException if has only private constructors
+     */
     private void implementConstructor(Writer writer) throws IOException, ImplerException {
         if (baseClass.getDeclaredConstructors().length == 0)
             return;
@@ -164,7 +190,6 @@ public class Implementor implements Impler {
     private void printHeader(StringBuilder sb, Method m) {
         Type genRetType = m.getGenericReturnType();
         sb.append(genRetType.getTypeName()).append(' ');
-        //sb.append(m.getDeclaringClass().getTypeName()).append('.');
         sb.append(m.getName());
     }
 
@@ -193,7 +218,6 @@ public class Implementor implements Impler {
 
     public static boolean bIsImplementationOfA(Method a, Method b) {
         int aMod = a.getModifiers();
-        int bMod = b.getModifiers();
         if (Modifier.isAbstract(aMod) &&
                 a.getName().equals(b.getName()) &&
                 a.getReturnType().equals(b.getReturnType())) {
@@ -229,7 +253,6 @@ public class Implementor implements Impler {
         List<Method> methods = new ArrayList<>();
         getNotImplementedMethods(baseClass, methods);
         ArrayList<Method> publics = new ArrayList<Method>();
-        //for (Method m : methods) System.out.println("" + m.toString());
 
         for (Method m : methods)
             if (Modifier.isPublic(m.getModifiers())) {
@@ -256,10 +279,10 @@ public class Implementor implements Impler {
     }
 
     private boolean methodEquals(Method m1, Method m2) {
-        return toStr(m1).equals(toStr(m2));
+        return toSimpleStr(m1).equals(toSimpleStr(m2));
     }
 
-    private String toStr(Method m1) {
+    private String toSimpleStr(Method m1) {
         StringBuilder sb = new StringBuilder();
         printHeader(sb, m1);
         printParameters(sb, m1);
@@ -301,17 +324,35 @@ public class Implementor implements Impler {
         return DEFAULT_VALUES.get(type);
     }
 
-    public static void main(String[] args) throws ClassNotFoundException,ImplerException {
-        //Class c = Class.forName(args[0]);
+    public static void main(String[] args) throws ClassNotFoundException, ImplerException {
+        Class c = Class.forName(args[0]);
         //Class c = NavigableSet.class;
-        Class c = javax.sql.rowset.CachedRowSet.class;
-        try {
-            //Class c = Cl.class;
-            Writer wr = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(c.getSimpleName() + "Impl.java"), StandardCharsets.UTF_8));
-            new Implementor(c).implement(wr);
-            wr.close();
-        } catch (IOException e) {
-            System.out.println("exception");
+        //Class c = javax.sql.rowset.CachedRowSet.class;
+        if (args.length == 2) {
+            if (!args[1].endsWith(".jar")) {
+                throw new IllegalArgumentException("Expected .jar file!");
+            }
+            try {
+                JarOutputStream jar = new JarOutputStream(new FileOutputStream(args[1]));
+                JarEntry entry = new JarEntry(c.getSimpleName() + "Impl.java");
+                jar.putNextEntry(entry);
+                Writer wr = new BufferedWriter(new OutputStreamWriter(jar));
+                new Implementor(c).implement(wr);
+                wr.flush();
+                jar.closeEntry();
+                jar.flush();
+                jar.close();
+            } catch (IOException e){
+                System.out.println("exception jar");
+            }
+        } else {
+            try {
+                Writer wr = new BufferedWriter(new FileWriter(c.getSimpleName() + "Impl.java"));
+                new Implementor(c).implement(wr);
+                wr.close();
+            } catch (IOException e){
+                System.out.println("exception file");
+            }
         }
     }
 }
