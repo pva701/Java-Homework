@@ -70,7 +70,7 @@ public class Implementor implements JarImpler {
     /**
      * @param token type token to create implementation for.
      * @param jarFile target <tt>.jar</tt> file.
-     * @throws ImplerException
+     * @throws ImplerException if it wasn't possible implement of class
      */
     @Override
     public void implementJar(Class<?> token, File jarFile) throws ImplerException {
