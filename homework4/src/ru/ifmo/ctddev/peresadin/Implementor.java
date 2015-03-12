@@ -1,8 +1,6 @@
 package ru.ifmo.ctddev.peresadin;
-import info.kgeorgiy.java.advanced.implementor.Impler;
 import info.kgeorgiy.java.advanced.implementor.ImplerException;
 import info.kgeorgiy.java.advanced.implementor.JarImpler;
-import org.junit.Assert;
 
 import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
@@ -36,12 +34,9 @@ public class Implementor implements JarImpler {
     public static String SPACE = "    ";
 
     /**
-     * Constructs a new instance.
-     * @param implClass the class for which need to implement.
+     * Default constructor.
      */
-    public Implementor(Class implClass) {
-        this.baseClass = implClass;
-    }
+    public Implementor() {}
 
     /**
      * @param token type token to create implementation for
@@ -72,20 +67,26 @@ public class Implementor implements JarImpler {
         }
     }
 
+    /**
+     * @param token type token to create implementation for.
+     * @param jarFile target <tt>.jar</tt> file.
+     * @throws ImplerException
+     */
     @Override
     public void implementJar(Class<?> token, File jarFile) throws ImplerException {
-
+        baseClass = token;
         try (
             Writer writer = new BufferedWriter(new FileWriter(token.getSimpleName() + "Impl.java"))) {
             implement(writer);
         } catch (IOException e) {
             System.out.println(" io excpetion ");
+            return;
         }
 
         String classFileName = token.getSimpleName() + "Impl.class";
-        String packageName = token.getPackage().getName();
-        String root = packageName.substring(0, packageName.indexOf('.'));
-        String fullDir = token.getPackage().getName().replace('.', File.separatorChar);
+        String packageName = token.getPackage().getName().replace('.', File.separatorChar);
+        String root = ".tmp_impl";
+        String fullDir = root + File.separatorChar + packageName;
         File f = new File(fullDir);
         f.mkdirs();
         compile(token.getSimpleName() + "Impl.java");
@@ -93,7 +94,7 @@ public class Implementor implements JarImpler {
         try {
             Files.move(new File(classFileName).toPath(), fullPathClassFile.toPath());
         } catch (IOException e) {
-            e.printStackTrace();
+            //e.printStackTrace();
             System.out.println("move exception!");
         }
 
@@ -103,7 +104,7 @@ public class Implementor implements JarImpler {
                 JarOutputStream jar = new JarOutputStream(new FileOutputStream(jarFile), manifest);
                 BufferedInputStream in = new BufferedInputStream(new FileInputStream(fullPathClassFile));
         ) {
-            JarEntry entry = new JarEntry(fullDir + File.separatorChar + classFileName);
+            JarEntry entry = new JarEntry(packageName + File.separatorChar + classFileName);
             jar.putNextEntry(entry);
             byte[] buffer = new byte[1024];
             while (true)
@@ -119,7 +120,9 @@ public class Implementor implements JarImpler {
             System.out.println("exception jar");
             e.printStackTrace();
         } finally {
+            //System.out.println("file root " + root);
             clean(new File(root));
+            clean(new File(token.getSimpleName() + "Impl.java"));
         }
     }
 
@@ -479,32 +482,32 @@ public class Implementor implements JarImpler {
     public static void main(String[] args) throws ClassNotFoundException, ImplerException {
         Class c = Class.forName(args[0]);
         if (args.length == 1) {
-            try (
-                Writer wr = new BufferedWriter(new FileWriter(c.getSimpleName() + "Impl.java")))
-            {
-                new Implementor(c).implement(wr);
-            } catch (IOException e){
-                System.out.println("exception file");
-            }
+            new Implementor().implement(c, new File(c.getSimpleName() + "Impl.java"));
         } else if (args.length == 2) {
             if (!args[1].endsWith(".jar")) {
                 throw new IllegalArgumentException("Expected .jar file!");
             }
-            new Implementor(c).implementJar(c, new File(args[1]));
+            new Implementor().implementJar(c, new File(args[1]));
         }
     }
 
+    /**
+     * Compile java source file.
+     * @param file java source file
+     */
     private static void compile(String file) {
         final JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        Assert.assertNotNull("Could not find java compiler, include tools.jar to classpath", compiler);
         ArrayList<String> args = new ArrayList<>();
         args.add(file);
         args.add("-cp");
         args.add(System.getProperty("java.class.path"));
-        final int exitCode = compiler.run(null, null, null, args.toArray(new String[args.size()]));
-        Assert.assertEquals("Compiler exit code", 0, exitCode);
+        compiler.run(null, null, null, args.toArray(new String[args.size()]));
     }
 
+    /**
+     * Delete temporary file or directory.
+     * @param file file or directory
+     */
     private static void clean(final File file) {
         if (file.isDirectory()) {
             final File[] files = file.listFiles();
