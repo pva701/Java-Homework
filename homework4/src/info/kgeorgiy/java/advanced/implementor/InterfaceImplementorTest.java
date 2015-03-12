@@ -23,6 +23,7 @@ import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
 import javax.xml.bind.Element;
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Modifier;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -50,6 +51,7 @@ public class InterfaceImplementorTest {
     public void test01_constructor() throws ClassNotFoundException, NoSuchMethodException {
         final Class<?> token = loadClass();
         assertImplements(token, Impler.class);
+        assertImplements(token, JarImpler.class);
         checkConstructor("public default constructor", token);
     }
 
@@ -135,7 +137,9 @@ public class InterfaceImplementorTest {
                 }
             }
         }
-        file.delete();
+        if (!file.delete()) {
+            System.out.println("Warning: unable to delete " + file);
+        }
     }
 
     private void checkConstructor(final String description, final Class<?> token, final Class<?>... params) {
@@ -147,9 +151,9 @@ public class InterfaceImplementorTest {
     }
 
     private void implement(final boolean shouldFail, final File root, final List<Class<?>> classes) {
-        Impler implementor;
+        JarImpler implementor;
         try {
-            implementor = (Impler) loadClass().newInstance();
+            implementor = (JarImpler) loadClass().newInstance();
         } catch (final Exception e) {
             e.printStackTrace();
             Assert.fail("Instantiation error");
@@ -158,6 +162,11 @@ public class InterfaceImplementorTest {
         for (final Class<?> clazz : classes) {
             try {
                 implementor.implement(clazz, root);
+
+                final File jarFile = new File(root, clazz.getName() + ".jar");
+                implementor.implementJar(clazz, jarFile);
+                checkJar(jarFile, clazz);
+
                 Assert.assertTrue("You may not implement " + clazz, !shouldFail);
             } catch (final ImplerException e) {
                 if (shouldFail) return;
@@ -203,6 +212,14 @@ public class InterfaceImplementorTest {
             Assert.assertFalse(name + " should not be interface", Modifier.isInterface(impl.getModifiers()));
         } catch (final ClassNotFoundException e) {
             throw new AssertionError("Error loading class " + name, e);
+        }
+    }
+
+    private void checkJar(final File jarFile, final Class<?> token) {
+        try (final URLClassLoader classLoader = getClassLoader(jarFile)) {
+            check(classLoader, token);
+        } catch (final IOException e) {
+            e.printStackTrace();
         }
     }
 }

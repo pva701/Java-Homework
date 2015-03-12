@@ -1,13 +1,12 @@
 package ru.ifmo.ctddev.peresadin;
 import info.kgeorgiy.java.advanced.implementor.Impler;
 import info.kgeorgiy.java.advanced.implementor.ImplerException;
+import info.kgeorgiy.java.advanced.implementor.JarImpler;
 import org.junit.Assert;
 
 import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
@@ -26,7 +25,7 @@ import java.util.jar.Manifest;
  * @author Ilya Peresadin
  */
 
-public class Implementor implements Impler {
+public class Implementor implements JarImpler {
     /**
      * Implemented class
      */
@@ -70,6 +69,57 @@ public class Implementor implements Impler {
             implement(writer);
         } catch (IOException e) {
             System.out.println("ex = " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void implementJar(Class<?> token, File jarFile) throws ImplerException {
+
+        try (
+            Writer writer = new BufferedWriter(new FileWriter(token.getSimpleName() + "Impl.java"))) {
+            implement(writer);
+        } catch (IOException e) {
+            System.out.println(" io excpetion ");
+        }
+
+        String classFileName = token.getSimpleName() + "Impl.class";
+        String packageName = token.getPackage().getName();
+        String root = packageName.substring(0, packageName.indexOf('.'));
+        String fullDir = token.getPackage().getName().replace('.', File.separatorChar);
+        File f = new File(fullDir);
+        f.mkdirs();
+        compile(token.getSimpleName() + "Impl.java");
+        File fullPathClassFile = new File(f.getAbsolutePath() + File.separatorChar + classFileName);
+        try {
+            Files.move(new File(classFileName).toPath(), fullPathClassFile.toPath());
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("move exception!");
+        }
+
+        Manifest manifest = new Manifest();
+        manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
+        try (
+                JarOutputStream jar = new JarOutputStream(new FileOutputStream(jarFile), manifest);
+                BufferedInputStream in = new BufferedInputStream(new FileInputStream(fullPathClassFile));
+        ) {
+            JarEntry entry = new JarEntry(fullDir + File.separatorChar + classFileName);
+            jar.putNextEntry(entry);
+            byte[] buffer = new byte[1024];
+            while (true)
+            {
+                int count = in.read(buffer);
+                if (count == -1)
+                    break;
+                jar.write(buffer, 0, count);
+            }
+            jar.closeEntry();
+            jar.flush();
+        } catch (IOException e){
+            System.out.println("exception jar");
+            e.printStackTrace();
+        } finally {
+            clean(new File(root));
         }
     }
 
@@ -428,58 +478,19 @@ public class Implementor implements Impler {
      */
     public static void main(String[] args) throws ClassNotFoundException, ImplerException {
         Class c = Class.forName(args[0]);
-        try (
-            Writer wr = new BufferedWriter(new FileWriter(c.getSimpleName() + "Impl.java")))
-        {
-            new Implementor(c).implement(wr);
-        } catch (IOException e){
-            System.out.println("exception file");
-        }
-
-        if (args.length == 2) {
+        if (args.length == 1) {
+            try (
+                Writer wr = new BufferedWriter(new FileWriter(c.getSimpleName() + "Impl.java")))
+            {
+                new Implementor(c).implement(wr);
+            } catch (IOException e){
+                System.out.println("exception file");
+            }
+        } else if (args.length == 2) {
             if (!args[1].endsWith(".jar")) {
                 throw new IllegalArgumentException("Expected .jar file!");
             }
-
-            String classFileName = c.getSimpleName() + "Impl.class";
-            String packageName = c.getPackage().getName();
-            String root = packageName.substring(0, packageName.indexOf('.'));
-            String fullDir = c.getPackage().getName().replace('.', File.separatorChar);
-            File f = new File(fullDir);
-            f.mkdirs();
-            compile(c.getSimpleName() + "Impl.java");
-            File fullPathClassFile = new File(f.getAbsolutePath() + File.separatorChar + classFileName);
-            try {
-                Files.move(new File(classFileName).toPath(), fullPathClassFile.toPath());
-            } catch (IOException e) {
-                e.printStackTrace();
-                System.out.println("move exception!");
-            }
-
-            Manifest manifest = new Manifest();
-            manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
-            try (
-                JarOutputStream jar = new JarOutputStream(new FileOutputStream(args[1]), manifest);
-                BufferedInputStream in = new BufferedInputStream(new FileInputStream(fullPathClassFile));
-            ) {
-                JarEntry entry = new JarEntry(fullDir + File.separatorChar + classFileName);
-                jar.putNextEntry(entry);
-                byte[] buffer = new byte[1024];
-                while (true)
-                {
-                    int count = in.read(buffer);
-                    if (count == -1)
-                        break;
-                    jar.write(buffer, 0, count);
-                }
-                jar.closeEntry();
-                jar.flush();
-            } catch (IOException e){
-                System.out.println("exception jar");
-                e.printStackTrace();
-            } finally {
-                clean(new File(root));
-            }
+            new Implementor(c).implementJar(c, new File(args[1]));
         }
     }
 
