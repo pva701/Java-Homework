@@ -1,1 +1,1 @@
-/usr/lib/jvm/jdk1.8.0_20/bin/javadoc -classpath ImplementorTest.jar -linkoffline http://docs.oracle.com/javase/7/docs/api/ http://docs.oracle.com/javase/7/docs/api/ -private -author ./src/ru/ifmo/ctddev/peresadin/Implementor.java  -d ./doc
+/usr/lib/jvm/jdk1.8.0_20/bin/javadoc -classpath ImplementorTest.jar:../libs/* -linkoffline http://docs.oracle.com/javase/8/docs/api/ http://docs.oracle.com/javase/8/docs/api/ -private -author ./src/ru/ifmo/ctddev/peresadin/* -sourcepath ./src/ -subpackages info.kgeorgiy.java.advanced.implementor   -d ./doc

@@ -115,7 +115,6 @@ public class Implementor implements JarImpler {
                 jar.write(buffer, 0, count);
             }
             jar.closeEntry();
-            jar.flush();
         } catch (IOException e){
             System.out.println("exception jar");
             e.printStackTrace();
@@ -128,9 +127,9 @@ public class Implementor implements JarImpler {
 
     /**
      * Implements class and write implementation in {@code writer}.
-     * @param  writer - {@link java.io.Writer} which consumes generated implementation code
-     * @throws java.io.IOException if some problems with {@code writer}
-     * @throws info.kgeorgiy.java.advanced.implementor.ImplerException if implemented class
+     * @param  writer {@link java.io.Writer} which consumes generated implementation code
+     * @throws IOException if some problems with {@code writer}
+     * @throws ImplerException if implemented class
      * is final, primitive or contains only private constructors.
      */
     public void implement(Writer writer) throws IOException, ImplerException {
