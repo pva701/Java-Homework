@@ -12,21 +12,15 @@ import java.util.function.Supplier;
 public class IterativeParallelism {
 
     private static class  Worker {
-        private Runnable runnable;
-
         public interface OnFinish {
             void onFinish();
         }
 
         public Worker(Runnable runnable, OnFinish fun) {
-            this.runnable = runnable;
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    runnable.run();
-                    fun.onFinish();
-                }
-            });
+            new Thread(() -> {
+                runnable.run();
+                fun.onFinish();
+            }).start();
         }
     }
 
@@ -35,14 +29,11 @@ public class IterativeParallelism {
 
         public Controller(Runnable[] runnables) {
             threadsWork = runnables.length;
-            for (int i = 0; i < runnables.length; ++i) {
-                new Worker(runnables[i], new Worker.OnFinish() {
-                    @Override
-                    public void onFinish() {
-                        synchronized (Controller.this) {
-                            threadsWork--;
-                            notify();
-                        }
+            for (Runnable r : runnables) {
+                new Worker(r, () -> {
+                    synchronized (Controller.this) {
+                        threadsWork--;
+                        Controller.this.notify();
                     }
                 });
             }
@@ -80,21 +71,19 @@ public class IterativeParallelism {
             }
             final int l = startPosition;
             final int r = startPosition + curLen - 1;
-            final int ith = i;
-            runs[i] = new Runnable() {
-                @Override
-                public void run() {
-                    Res res = zero.get();
-                    for (int j = l; j <= r; ++j)
-                        res = applier.apply(res, list.get(j));
-                    results.set(ith, res);
-                }
+            int ith = i;
+            startPosition += curLen;
+            runs[i] = () -> {
+                Res res = zero.get();
+                for (int j = l; j <= r; ++j)
+                    res = applier.apply(res, list.get(j));
+                results.set(ith, res);
             };
         }
         new Controller(runs);//blocked
         Res res = zero.get();
-        for (int i = 0; i < results.size(); ++i)
-            res = merger.apply(res, results.get(i));
+        for (Res e : results)
+            res = merger.apply(res, e);
         return res;
     }
 
@@ -105,7 +94,7 @@ public class IterativeParallelism {
 
     public static <T> T minimum(int threads, List<T> list, Comparator<? super T> comparator) {
         ensureThreads(threads);
-        BiFunction<T, T, T> f = (x,y)->(comparator.compare(x, y) < 0 ? y : x);
+        BiFunction<T, T, T> f = (x,y)->(comparator.compare(x, y) < 0 ? x : y);
         if (list.size() != 0)
             return calc(threads, list.subList(1, list.size()), ()->list.get(0), f, f);
         else
@@ -114,7 +103,7 @@ public class IterativeParallelism {
 
     public static <T> T maximum(int threads, List<T> list, Comparator<T> comparator) {
         ensureThreads(threads);
-        BiFunction<T, T, T> f = (x,y)->(comparator.compare(x, y) > 0 ? y : x);
+        BiFunction<T, T, T> f = (x,y)->(comparator.compare(x, y) > 0 ? x : y);
         if (list.size() != 0)
             return calc(threads, list.subList(1, list.size()), ()->list.get(0), f, f);
         else
@@ -130,6 +119,21 @@ public class IterativeParallelism {
         ensureThreads(threads);
         return calc(threads, list, ()->false, (x,y)->x||predicate.test(y), (x, y)->x||y);
     }
+
+    public static <T> List<T> filter(int threads, List<T> list, Predicate<T> predicate) {
+        ensureThreads(threads);
+        return calc(threads, list, ArrayList::new,
+                (lst, el)->{
+                    if (predicate.test(el))
+                        lst.add(el);
+                    return lst;
+                },
+                (lst1, lst2)->{
+                    lst1.addAll(lst2);
+                    return lst1;
+                });
+    }
+
 
     public static <T, R> List<R> map(int threads, List<T> list, Function<T, R> function) {
         ensureThreads(threads);
