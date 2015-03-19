@@ -30,7 +30,11 @@ import java.util.function.Supplier;
 
 public class IterativeParallelism implements ListIP {
 
+    /**
+     * Default constructor.
+     */
     public IterativeParallelism() {}
+
     private static class  Worker {
         public interface OnFinish {
             void onFinish();
@@ -71,9 +75,10 @@ public class IterativeParallelism implements ListIP {
                                            Supplier<Res> zero,
                                            BiFunction<? super Res, ? super T, ? extends Res> applier,
                                            BiFunction<? super Res, ? super Res, ? extends Res> merger) throws InterruptedException{
-        threads = Math.min(list.size(), threads);
+
         if (threads <= 0)
             throw new IllegalArgumentException("threads " + threads);
+        //threads = Math.min(list.size(), threads);
         int len = list.size() / threads;
         Runnable[] runs = new Runnable[threads];
         ArrayList<Res> results = new ArrayList<>();
@@ -125,7 +130,7 @@ public class IterativeParallelism implements ListIP {
         ensureThreads(threads);
         BiFunction<T, T, T> f = (x,y)->(comparator.compare(x, y) <= 0 ? x : y);
         if (list.size() != 0) {
-            return calc(threads, list.subList(1, list.size()), ()->list.get(0), f, f);
+            return calc(threads, list, ()->list.get(0), f, f);
         } else {
             return null;
         }
@@ -147,7 +152,7 @@ public class IterativeParallelism implements ListIP {
         ensureThreads(threads);
         BiFunction<T, T, T> f = (x,y)->(comparator.compare(x, y) >= 0 ? x : y);
         if (list.size() != 0) {
-            return calc(threads, list.subList(1, list.size()), ()->list.get(0), f, f);
+            return calc(threads, list, ()->list.get(0), f, f);
         } else {
             return null;
         }
