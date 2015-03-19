@@ -1,7 +1,5 @@
 package ru.ifmo.ctddev.peresadin.iterativeparallelism;
 
-import ru.ifmo.ctddev.peresadin.iterativeparallelism.IterativeParallelism;
-
 import java.util.ArrayList;
 import java.util.Comparator;
 
@@ -10,6 +8,7 @@ import java.util.Comparator;
  */
 public class Main {
     public static void main(String[] args) throws InterruptedException{
+        System.out.println(Runtime.getRuntime().availableProcessors());
         ArrayList<Integer> list = new ArrayList<>();
         list.add(1);
         list.add(3);
