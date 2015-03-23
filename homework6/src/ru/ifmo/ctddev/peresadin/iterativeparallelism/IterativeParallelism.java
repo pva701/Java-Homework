@@ -26,11 +26,15 @@ import java.util.function.Supplier;
  */
 public class IterativeParallelism implements ListIP {
 
+    private ParallelUtils.ParallelMapper mapper;
     /**
      * Default constructor.
      */
     public IterativeParallelism() {}
 
+    public  IterativeParallelism(ParallelUtils.ParallelMapper mapper) {
+        this.mapper = mapper;
+    }
 
     private static void ensureThreads(int threads) {
         if (threads <= 0) {
@@ -38,8 +42,21 @@ public class IterativeParallelism implements ListIP {
         }
     }
 
+    private boolean isParallelMapper() {
+        return mapper != null;
+    }
 
-    private static <Res, T> Res calc(
+    private <Res> Res merge(
+            List<? extends Res> list,
+            BiFunction<? super Res, ? super Res, ? extends Res> merger,
+            Supplier<Res> zero) {
+        Res res = zero.get();
+        for (Res e : list)
+            res = merger.apply(res, e);
+        return res;
+    }
+
+    private <Res, T> Res calc(
             int threads,
             List<? extends T> list,
             Supplier<Res> zero,
@@ -50,9 +67,18 @@ public class IterativeParallelism implements ListIP {
         int len = list.size() / threads;
         Runnable[] runs = new Runnable[threads];
         List<Res> results = new ArrayList<>();
+        List<List<? extends T>> args = new ArrayList<>();
         for (int i = 0; i < threads; i++) {
+            args.add(null);
             results.add(null);
         }
+        Function<List<? extends T>, Res> applyToList = sublist -> {
+            Res res = zero.get();
+            for (int j = 0; j < sublist.size(); ++j)
+                res = applier.apply(res, list.get(j));
+            return res;
+        };
+
         int startPosition = 0;
         for (int i = 0; i < threads; ++i) {
             int curLen = len;
@@ -63,18 +89,20 @@ public class IterativeParallelism implements ListIP {
             final int r = startPosition + curLen - 1;
             final int ith = i;
             startPosition += curLen;
-            runs[i] = () -> {
-                Res res = zero.get();
-                for (int j = l; j <= r; ++j)
-                    res = applier.apply(res, list.get(j));
-                results.set(ith, res);
-            };
+            List<? extends T> sublist = list.subList(l, r + 1);
+            if (isParallelMapper()) {
+                args.set(i, sublist);
+            } else {
+                runs[i] = () -> {
+                    results.set(ith, applyToList.apply(sublist));
+                };
+            }
         }
-        new ParallelUtils.Controller(runs);//blocked
-        Res res = zero.get();
-        for (Res e : results)
-            res = merger.apply(res, e);
-        return res;
+        if (!isParallelMapper()) {
+            new ParallelUtils.Controller(runs);//blocked
+            return merge(results, merger, zero);
+        } else
+            return merge(mapper.run(applyToList, args), merger, zero);
     }
 
     /**

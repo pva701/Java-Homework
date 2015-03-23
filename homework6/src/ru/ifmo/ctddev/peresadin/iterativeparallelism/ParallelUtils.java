@@ -9,6 +9,16 @@ import java.util.function.Function;
 public class ParallelUtils {
     private ParallelUtils() {}
 
+    public static interface ParallelMapper extends AutoCloseable {
+        <T, R> List<R> run(
+                Function<? super T, ? extends R> f,
+                List<? extends T> args
+        ) throws InterruptedException;
+
+        @Override
+        void close() throws InterruptedException;
+    }
+
     public static interface Callbacks {
         public static interface OnFinish {
             void onFinish();
@@ -49,7 +59,7 @@ public class ParallelUtils {
                             onFinish = null;
                         }
                     } catch (InterruptedException e) {
-                        //TODO write
+                        isClosed = true;
                     }
                 }
             }).start();
@@ -90,40 +100,47 @@ public class ParallelUtils {
     }
 
     public static class ParallelMapperImpl {
-        private int threads;
+        public enum State {RUNNING, NOT_RUNNING, CLOSED}
+
+        private int workedThreads;
         private ReusedWorker[] workers;
-        private boolean isRunning;
+        private State state;
         private Deque<Thread> queue = new ArrayDeque<>();
 
         public ParallelMapperImpl(int threads) {
+            state = State.NOT_RUNNING;
             workers = new ReusedWorker[threads];
             for (int i = 0; i < threads; ++i)
                 workers[i] = new ReusedWorker();
         }
 
-        <T, R> List<R> run(
+        public <T, R> List<R> run(
                 Function<? super T, ? extends R> f,
                 List<? extends T> args)
                 throws InterruptedException {
-            queue.add(Thread.currentThread());
             synchronized (this) {
-                while (isRunning || queue.peekFirst() != Thread.currentThread()) {
+                queue.add(Thread.currentThread());
+                while (state == State.RUNNING || queue.peekFirst() != Thread.currentThread()) {
                     wait();
                 }
                 queue.removeFirst();
-                isRunning = true;
+                if (state == State.CLOSED) {
+                    throw new InterruptedException();
+                }
+                state = State.RUNNING;
             }
 
-            threads = (workers.length < args.size() ? workers.length : args.size());
-            int len = args.size() / threads;
+            workedThreads = (workers.length < args.size() ? workers.length : args.size());
+            int len = args.size() / workedThreads;
             int startPosition = 0;
-            List<R> result = new ArrayList<>();
+            List<R> result = new ArrayList<>(args.size());
             for (int i = 0; i < args.size(); ++i) {
                 result.add(null);
             }
-            for (int i = 0; i < threads; ++i) {
+            int totalThreads = workedThreads;
+            for (int i = 0; i < totalThreads; ++i) {
                 int curLength = len;
-                if (i < args.size() % threads) {
+                if (i < args.size() % totalThreads) {
                     ++curLength;
                 }
 
@@ -136,27 +153,34 @@ public class ParallelUtils {
                 },
                 () -> {
                     synchronized (ParallelMapperImpl.this) {
-                        --threads;
-                        if (threads == 0) {
-                            ParallelMapperImpl.this.notify();
+                        --workedThreads;
+                        if (workedThreads == 0) {
+                            ParallelMapperImpl.this.notifyAll();
                         }
                     }
                 });
             }
 
             synchronized (this) {
-                while (threads != 0) {
+                while (workedThreads != 0) {
                     wait();
                 }
-                isRunning = false;
-                notify();
+                state = State.NOT_RUNNING;
+                notifyAll();
             }
             return result;
         }
 
 
-        void close() throws InterruptedException {
+        public synchronized void close() throws InterruptedException {
+            for (int i = 0; i < workers.length; ++i)
+                workers[i].close();
+            state = State.CLOSED;
+        }
 
+
+        public State getState() {
+            return state;
         }
     }
 }
