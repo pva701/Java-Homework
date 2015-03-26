@@ -1,6 +1,7 @@
 package ru.ifmo.ctddev.peresadin.iterativeparallelism;
 
 import info.kgeorgiy.java.advanced.concurrent.ListIP;
+import info.kgeorgiy.java.advanced.mapper.ParallelMapper;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -26,13 +27,13 @@ import java.util.function.Supplier;
  */
 public class IterativeParallelism implements ListIP {
 
-    private ParallelUtils.ParallelMapper mapper;
+    private ParallelMapper mapper;
     /**
      * Default constructor.
      */
     public IterativeParallelism() {}
 
-    public  IterativeParallelism(ParallelUtils.ParallelMapper mapper) {
+    public  IterativeParallelism(ParallelMapper mapper) {
         this.mapper = mapper;
     }
 
@@ -64,6 +65,7 @@ public class IterativeParallelism implements ListIP {
             BiFunction<? super Res, ? super Res, ? extends Res> merger
     ) throws InterruptedException{
         ensureThreads(threads);
+        threads = Math.min(list.size(), threads);
         int len = list.size() / threads;
         Runnable[] runs = new Runnable[threads];
         List<Res> results = new ArrayList<>();
@@ -72,10 +74,11 @@ public class IterativeParallelism implements ListIP {
             args.add(null);
             results.add(null);
         }
+
         Function<List<? extends T>, Res> applyToList = sublist -> {
             Res res = zero.get();
             for (int j = 0; j < sublist.size(); ++j)
-                res = applier.apply(res, list.get(j));
+                res = applier.apply(res, sublist.get(j));
             return res;
         };
 
@@ -98,11 +101,12 @@ public class IterativeParallelism implements ListIP {
                 };
             }
         }
+
         if (!isParallelMapper()) {
             new ParallelUtils.Controller(runs);//blocked
             return merge(results, merger, zero);
         } else
-            return merge(mapper.run(applyToList, args), merger, zero);
+            return merge(mapper.map(applyToList, args), merger, zero);
     }
 
     /**

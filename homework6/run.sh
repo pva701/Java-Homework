@@ -1,3 +1,1 @@
-/usr/lib/jvm/jdk1.8.0_20/bin/java -cp IterativeParallelismTest.jar:/home/pva701/github/Java-Homework/libs/*:. info.kgeorgiy.java.advanced.concurrent.Tester list ru.ifmo.ctddev.peresadin.iterativeparallelism.IterativeParallelism
-
-
+/usr/lib/jvm/jdk1.8.0_60/bin/java -cp ParallelMapperTest.jar:IterativeParallelismTest.jar:/home/pva701/github/Java-Homework/libs/*:. info.kgeorgiy.java.advanced.mapper.Tester taskList ru.ifmo.ctddev.peresadin.iterativeparallelism.ParallelUtils.ParallelMapperImpl,ru.ifmo.ctddev.peresadin.iterativeparallelism.IterativeParallelism
