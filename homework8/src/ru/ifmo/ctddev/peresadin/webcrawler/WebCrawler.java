@@ -1,18 +1,23 @@
 package ru.ifmo.ctddev.peresadin.webcrawler;
 
 import info.kgeorgiy.java.advanced.crawler.Crawler;
+import info.kgeorgiy.java.advanced.crawler.Document;
 import info.kgeorgiy.java.advanced.crawler.Downloader;
+import info.kgeorgiy.java.advanced.crawler.URLUtils;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class WebCrawler implements Crawler {
     private Downloader downloader;
     private int downloaders;
     private int extractors;
     private int perHost;
-    private ParallelUtils.ThreadPool downloadThreadPool;
+    private ParallelUtils.HostLimitThreadPool downloadThreadPool;
     private ParallelUtils.ThreadPool extractorThreadPool;
 
     public WebCrawler(Downloader downloader, int downloaders, int extractors, int perHost) {
@@ -20,8 +25,24 @@ public class WebCrawler implements Crawler {
         this.downloaders = downloaders;
         this.extractors = extractors;
         this.perHost = perHost;
-        downloadThreadPool = new ParallelUtils.ThreadPool(downloaders);
+        downloadThreadPool = new ParallelUtils.HostLimitThreadPool(downloaders, perHost);
         extractorThreadPool = new ParallelUtils.ThreadPool(extractors);
+    }
+
+    private Document download(String url, Map<String, Document> loadedPages) {
+        if (loadedPages.containsKey(url))
+            return loadedPages.get(url);
+        try {
+            return downloader.download(url);
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    private void decCounter(AtomicInteger counter) {
+        counter.decrementAndGet();
+        if (counter.get() == 0)
+            counter.notify();
     }
 
     private void runDownload(
@@ -29,9 +50,25 @@ public class WebCrawler implements Crawler {
             final int curDepth,
             final int maxDepth,
             final List<String> result,
-            final LimitHostDocumentDownloader limitDownloader) {
+            Map<String, Document> loadedPages,
+            final AtomicInteger counterDownloads) {
+        counterDownloads.incrementAndGet();
 
-        limitDownloader.download(url, doc->{
+        String host = null;
+        try {
+            host = URLUtils.getHost(url);
+        } catch (IOException e) {}
+        if (host == null)
+            return;
+
+        downloadThreadPool.execute(new ParallelUtils.UrlDownloadTask(
+        ()->{
+            final Document doc = download(url, loadedPages);
+            if (doc == null) {
+                decCounter(counterDownloads);
+                return;
+            }
+            loadedPages.put(url, doc);
             extractorThreadPool.execute(() -> {
                 try {
                     List<String> links = doc.extractLinks();
@@ -40,25 +77,24 @@ public class WebCrawler implements Crawler {
                     }
                     if (curDepth < maxDepth) {
                         for (String e : links)
-                            runDownload(e, curDepth + 1, maxDepth, result, limitDownloader);
+                            runDownload(e, curDepth + 1, maxDepth, result, loadedPages, counterDownloads);
                     }
                 } catch (IOException e) {}
+                decCounter(counterDownloads);
             });
-        });
-
-
+        }, host));
 
     }
 
     @Override
     public List<String> download(String url, int depth) throws IOException {
         List<String> ret = new ArrayList<>();
-        LimitHostDocumentDownloader limitDownloader = new LimitHostDocumentDownloader(downloadThreadPool, downloader, perHost);
-        runDownload(url, 1, depth, ret, limitDownloader);
-        synchronized (limitDownloader) {
-            while (!limitDownloader.isEmpty()) {
+        AtomicInteger counter = new AtomicInteger(0);
+        runDownload(url, 1, depth, ret, new HashMap<>(), counter);
+        synchronized (counter) {
+            while (counter.get() != 0) {
                 try {
-                    limitDownloader.wait();
+                    counter.wait();
                 } catch (InterruptedException e) {}
             }
         }
