@@ -10,27 +10,33 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
-/**
- * Created by pva701 on 4/5/15.
- */
-public class LimitHostDownloader {
-    //private enum TryDownloadStatus {NOW_ADDED, CACHED, RESTRICT_PER_HOST};
-
+public class LimitHostDocumentDownloader {
     private final Map<String, Deque<String>> queueUrlForHost = new HashMap<>();
     private final Map<String, Integer> countDownloadsFromHost = new HashMap<>();
     private final Map<String, Document> loadedPages = new HashMap<>();
     private ParallelUtils.ThreadPool threadPool;
     private Downloader downloader;
     private int perHost;
+    private AtomicInteger numDownloads;
 
-    public LimitHostDownloader(ParallelUtils.ThreadPool threadPool, Downloader downloader, int perHost) {
+    public static interface AfterDownload {
+        void afterDownload(Document document);
+    }
+
+    public LimitHostDocumentDownloader(ParallelUtils.ThreadPool threadPool, Downloader downloader, int perHost) {
         this.threadPool = threadPool;
         this.downloader = downloader;
         this.perHost = perHost;
     }
 
-    public void download(String url) {
+    public boolean isEmpty() {
+        return numDownloads.intValue() == 0;
+    }
+
+    public void download(String url, AfterDownload afterDownload) {
+        numDownloads.incrementAndGet();
         threadPool.execute(()->{
             String host;
             try {
@@ -51,10 +57,10 @@ public class LimitHostDownloader {
             } catch (IOException e) {}
 
             final Document doc = loadedPages.get(url);
-
+            afterDownload.afterDownload(doc);
             String qUrl = atomicPeekFirst(host);
             try {
-                if (qUrl != null && !tryDownload(qUrl))
+                if (qUrl != null && !tryDownload(qUrl))//TODO wrong
                     atomicRemoveFirst(host);
             } catch (IOException e) {}
         });

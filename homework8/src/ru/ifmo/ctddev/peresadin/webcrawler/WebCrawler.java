@@ -1,14 +1,11 @@
 package ru.ifmo.ctddev.peresadin.webcrawler;
 
 import info.kgeorgiy.java.advanced.crawler.Crawler;
-import info.kgeorgiy.java.advanced.crawler.Document;
 import info.kgeorgiy.java.advanced.crawler.Downloader;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class WebCrawler implements Crawler {
     private Downloader downloader;
@@ -31,38 +28,42 @@ public class WebCrawler implements Crawler {
             String url,
             final int curDepth,
             final int maxDepth,
-            List<String> result) {
+            final List<String> result,
+            final LimitHostDocumentDownloader limitDownloader) {
 
-        downloadThreadPool.execute(()->{
-            try {
-                extractorThreadPool.execute(()->{
-                    try {
-                        List<String> links = doc.extractLinks();
-                        synchronized (result) {
-                            result.addAll(links);
-                        }
-                        if (curDepth < maxDepth) {
-                            for (String e : links)
-                                runDownload(e, curDepth + 1, maxDepth, result, loadedPage);
-                        }
-                    } catch (IOException e) {
-                        //ignore
+        limitDownloader.download(url, doc->{
+            extractorThreadPool.execute(() -> {
+                try {
+                    List<String> links = doc.extractLinks();
+                    synchronized (result) {
+                        result.addAll(links);
                     }
-                });
-            } catch (IOException e) {
-                //ignore
-            }
+                    if (curDepth < maxDepth) {
+                        for (String e : links)
+                            runDownload(e, curDepth + 1, maxDepth, result, limitDownloader);
+                    }
+                } catch (IOException e) {}
+            });
         });
+
+        /*synchronized (limitDownloader)*/ {
+            while (!limitDownloader.isEmpty()) {
+                try {
+                    limitDownloader.wait();
+                } catch (InterruptedException e) {}
+            }
+        }
     }
 
     @Override
     public List<String> download(String url, int depth) throws IOException {
         List<String> ret = new ArrayList<>();
-        runDownload(url, 1, depth, ret, new LimitHostDownloader(downloadThreadPool, downloader, perHost));
+        runDownload(url, 1, depth, ret, new LimitHostDocumentDownloader(downloadThreadPool, downloader, perHost));
+        return ret;
     }
 
     @Override
     public void close() {
-
+        //TODO implement
     }
 }
