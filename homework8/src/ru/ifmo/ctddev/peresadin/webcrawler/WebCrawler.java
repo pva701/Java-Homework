@@ -46,19 +46,22 @@ public class WebCrawler implements Crawler {
             });
         });
 
-        /*synchronized (limitDownloader)*/ {
+
+
+    }
+
+    @Override
+    public List<String> download(String url, int depth) throws IOException {
+        List<String> ret = new ArrayList<>();
+        LimitHostDocumentDownloader limitDownloader = new LimitHostDocumentDownloader(downloadThreadPool, downloader, perHost);
+        runDownload(url, 1, depth, ret, limitDownloader);
+        synchronized (limitDownloader) {
             while (!limitDownloader.isEmpty()) {
                 try {
                     limitDownloader.wait();
                 } catch (InterruptedException e) {}
             }
         }
-    }
-
-    @Override
-    public List<String> download(String url, int depth) throws IOException {
-        List<String> ret = new ArrayList<>();
-        runDownload(url, 1, depth, ret, new LimitHostDocumentDownloader(downloadThreadPool, downloader, perHost));
         return ret;
     }
 

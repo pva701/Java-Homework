@@ -14,12 +14,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class LimitHostDocumentDownloader {
     private final Map<String, Deque<String>> queueUrlForHost = new HashMap<>();
+    private final Map<String, Deque<AfterDownload>> queueCallbacksForHost = new HashMap<>();
     private final Map<String, Integer> countDownloadsFromHost = new HashMap<>();
     private final Map<String, Document> loadedPages = new HashMap<>();
     private ParallelUtils.ThreadPool threadPool;
     private Downloader downloader;
     private int perHost;
-    private AtomicInteger numDownloads;
+    private int numDownloads;
 
     public static interface AfterDownload {
         void afterDownload(Document document);
@@ -31,71 +32,60 @@ public class LimitHostDocumentDownloader {
         this.perHost = perHost;
     }
 
-    public boolean isEmpty() {
-        return numDownloads.intValue() == 0;
+    public synchronized boolean isEmpty() {
+        return numDownloads == 0;
     }
 
-    public void download(String url, AfterDownload afterDownload) {
-        numDownloads.incrementAndGet();
+    public static String hostOrNull(String url) {
+        try {
+            return URLUtils.getHost(url);
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    public synchronized  void download(final String url, final AfterDownload afterDownload) {
+        final String host = hostOrNull(url);
+        if (host == null) {
+            return;
+        }
+        if (!countDownloadsFromHost.containsKey(host))
+            countDownloadsFromHost.put(host, 0);
+        if (countDownloadsFromHost.get(host) < perHost) {
+            countDownloadsFromHost.put(host, countDownloadsFromHost.get(host) + 1);
+        } else {
+            if (!queueUrlForHost.containsKey(host))
+                queueUrlForHost.put(host, new LinkedList<>());
+            queueUrlForHost.get(host).add(url);
+            queueCallbacksForHost.get(host).add(afterDownload);
+            return;
+        }
+        ++numDownloads;
         threadPool.execute(()->{
-            String host;
             try {
-                host = URLUtils.getHost(url);
-            } catch (MalformedURLException e) {
-                return;
-            }
-
-            try {
-                if (!tryDownload(url)) {
-                    synchronized (queueUrlForHost) {
-                        if (!queueUrlForHost.containsKey(host))
-                            queueUrlForHost.put(host, new LinkedList<>());
-                        queueUrlForHost.get(host).add(url);
+                final Document doc = tryDownload(url);
+                synchronized (LimitHostDocumentDownloader.this) {
+                    loadedPages.put(url, doc);
+                    --numDownloads;
+                    countDownloadsFromHost.put(host, countDownloadsFromHost.get(host) - 1);
+                    if (queueUrlForHost.containsKey(host) && queueUrlForHost.get(host).size() != 0) {
+                        String qUrl = queueUrlForHost.get(host).pollFirst();
+                        queueUrlForHost.get(host).removeFirst();
+                        download(qUrl, queueCallbacksForHost.get(host).pollFirst());
                     }
-                    return;
+                    afterDownload.afterDownload(doc);
+                    if (numDownloads == 0)
+                        notify();
                 }
-            } catch (IOException e) {}
-
-            final Document doc = loadedPages.get(url);
-            afterDownload.afterDownload(doc);
-            String qUrl = atomicPeekFirst(host);
-            try {
-                if (qUrl != null && !tryDownload(qUrl))//TODO wrong
-                    atomicRemoveFirst(host);
             } catch (IOException e) {}
         });
     }
 
-    private boolean tryDownload(String url) throws IOException {
-        String host = URLUtils.getHost(url);
+    private Document tryDownload(String url) throws IOException {
         synchronized (this) {
             if (loadedPages.containsKey(url))
-                return true;
-            if (!countDownloadsFromHost.containsKey(host))
-                countDownloadsFromHost.put(host, 0);
-            if (countDownloadsFromHost.get(host) < perHost) {
-                countDownloadsFromHost.put(host, countDownloadsFromHost.get(host) + 1);
-            } else
-                return false;
+                return loadedPages.get(url);
         }
-        Document doc = downloader.download(url);
-        synchronized (this) {
-            countDownloadsFromHost.put(host, countDownloadsFromHost.get(host) - 1);
-            loadedPages.put(url, doc);
-        }
-        return true;
-    }
-
-    private String atomicPeekFirst(String host) {
-        synchronized (queueUrlForHost) {
-            if (queueUrlForHost.containsKey(host) && queueUrlForHost.get(host).size() != 0) {
-                return queueUrlForHost.get(host).peekFirst();
-            }
-        }
-        return null;
-    }
-
-    private void atomicRemoveFirst(String host) {
-        queueUrlForHost.get(host).removeFirst();
+        return downloader.download(url);
     }
 }
