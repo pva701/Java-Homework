@@ -26,9 +26,11 @@ public class ParallelUtils {
             }
         }
 
-        public synchronized void execute(T task) {
-            tasksQueue.add(task);
-            tasksQueue.notify();
+        public void execute(T task) {
+            synchronized (tasksQueue) {
+                tasksQueue.add(task);
+                tasksQueue.notify();
+            }
         }
 
         protected Thread createThread() {
@@ -40,7 +42,7 @@ public class ParallelUtils {
                             try {
                                 tasksQueue.wait();
                             } catch (InterruptedException e) {
-                                System.err.println("task queue ex!");
+                                return;
                             }
                         }
                         curTask = tasksQueue.pollFirst();
@@ -54,7 +56,6 @@ public class ParallelUtils {
         public void close() {
             for (int i = 0; i < workers.length; ++i)
                 workers[i].interrupt();
-            tasksQueue.notifyAll();
         }
 
         protected abstract void handleTask(T task);

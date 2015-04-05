@@ -11,17 +11,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class WebCrawler implements Crawler {
     private Downloader downloader;
-    private int downloaders;
-    private int extractors;
-    private int perHost;
     private ParallelUtils.HostLimitThreadPool downloadThreadPool;
     private ParallelUtils.ThreadPool extractorThreadPool;
 
     public WebCrawler(Downloader downloader, int downloaders, int extractors, int perHost) {
         this.downloader = downloader;
-        this.downloaders = downloaders;
-        this.extractors = extractors;
-        this.perHost = perHost;
         downloadThreadPool = new ParallelUtils.HostLimitThreadPool(downloaders, perHost);
         extractorThreadPool = new ParallelUtils.ThreadPool(extractors);
     }
@@ -32,14 +26,17 @@ public class WebCrawler implements Crawler {
         try {
             return downloader.download(url);
         } catch (IOException e) {
+            printEx(e);
             return null;
         }
     }
 
     private void decCounter(AtomicInteger counter) {
-        counter.decrementAndGet();
-        if (counter.get() == 0)
-            counter.notify();
+        synchronized (counter) {
+            counter.decrementAndGet();
+            if (counter.get() == 0)
+                counter.notify();
+        }
     }
 
     private void runDownload(
@@ -54,9 +51,13 @@ public class WebCrawler implements Crawler {
         String host = null;
         try {
             host = URLUtils.getHost(url);
-        } catch (IOException e) {}
-        if (host == null)
+        } catch (IOException e) {
+            printEx(e);
+        }
+        if (host == null) {
+            decCounter(counterDownloads);
             return;
+        }
 
         downloadThreadPool.execute(new ParallelUtils.UrlDownloadTask(
         ()->{
@@ -76,7 +77,9 @@ public class WebCrawler implements Crawler {
                         for (String e : links)
                             runDownload(e, curDepth + 1, maxDepth, result, loadedPages, counterDownloads);
                     }
-                } catch (IOException e) {}
+                } catch (IOException e) {
+                    printEx(e);
+                }
                 decCounter(counterDownloads);
             });
         }, host));
@@ -104,7 +107,14 @@ public class WebCrawler implements Crawler {
         extractorThreadPool.close();
     }
 
-    public static void main(String[] args) throws IOException{
+    public static boolean DEBUG = true;
+    public static void printEx(Exception e) {
+        if (DEBUG) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void main(String[] args) throws IOException {
         String url = args[0];
         int download = 5;
         int extractor = 5;
@@ -115,6 +125,11 @@ public class WebCrawler implements Crawler {
             extractor = Integer.parseInt(args[2]);
         if (args.length > 3)
             perHost = Integer.parseInt(args[3]);
-        new WebCrawler(new CachingDownloader(), download, extractor, perHost);
+        Crawler crawler = new WebCrawler(new CachingDownloader(), download, extractor, perHost);
+        List<String> list = crawler.download(url, 2);
+        System.out.println("links");
+        for (String s : list)
+            System.out.println("link = " + s);
+        crawler.close();
     }
 }
