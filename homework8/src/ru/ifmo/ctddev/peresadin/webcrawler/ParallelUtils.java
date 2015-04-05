@@ -17,10 +17,12 @@ public class ParallelUtils {
 
     public static abstract class AbstractThreadPool<T> {
         protected final Deque<T> tasksQueue = new LinkedList<>();
-
+        protected Thread[] workers;
         public AbstractThreadPool(int threads) {
+            workers = new Thread[threads];
             for (int i = 0; i < threads; ++i) {
-                createThread().start();
+                workers[i] = createThread();
+                workers[i].start();
             }
         }
 
@@ -31,19 +33,28 @@ public class ParallelUtils {
 
         protected Thread createThread() {
             return new Thread(()->{
-                T curTask;
-                synchronized (tasksQueue) {
-                    while (tasksQueue.isEmpty()) {
-                        try {
-                            tasksQueue.wait();
-                        } catch (InterruptedException e) {
-                            System.err.println("task queue ex!");
+                while (!Thread.interrupted()) {
+                    T curTask;
+                    synchronized (tasksQueue) {
+                        if (tasksQueue.isEmpty()) {
+                            try {
+                                tasksQueue.wait();
+                            } catch (InterruptedException e) {
+                                System.err.println("task queue ex!");
+                            }
                         }
+                        curTask = tasksQueue.pollFirst();
                     }
-                    curTask = tasksQueue.pollFirst();
+                    if (curTask != null)
+                        handleTask(curTask);
                 }
-                handleTask(curTask);
             });
+        }
+
+        public void close() {
+            for (int i = 0; i < workers.length; ++i)
+                workers[i].interrupt();
+            tasksQueue.notifyAll();
         }
 
         protected abstract void handleTask(T task);

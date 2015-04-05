@@ -1,9 +1,6 @@
 package ru.ifmo.ctddev.peresadin.webcrawler;
 
-import info.kgeorgiy.java.advanced.crawler.Crawler;
-import info.kgeorgiy.java.advanced.crawler.Document;
-import info.kgeorgiy.java.advanced.crawler.Downloader;
-import info.kgeorgiy.java.advanced.crawler.URLUtils;
+import info.kgeorgiy.java.advanced.crawler.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -103,6 +100,21 @@ public class WebCrawler implements Crawler {
 
     @Override
     public void close() {
-        //TODO implement
+        downloadThreadPool.close();
+        extractorThreadPool.close();
+    }
+
+    public static void main(String[] args) throws IOException{
+        String url = args[0];
+        int download = 5;
+        int extractor = 5;
+        int perHost = 5;
+        if (args.length > 1)
+            download = Integer.parseInt(args[1]);
+        if (args.length > 2)
+            extractor = Integer.parseInt(args[2]);
+        if (args.length > 3)
+            perHost = Integer.parseInt(args[3]);
+        new WebCrawler(new CachingDownloader(), download, extractor, perHost);
     }
 }
