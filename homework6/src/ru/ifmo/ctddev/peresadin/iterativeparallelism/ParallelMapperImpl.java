@@ -19,23 +19,37 @@ public class ParallelMapperImpl implements ParallelMapper {
     private ParallelUtils.ReusedWorker[] workers;
     private State state;
     private Deque<Thread> queue = new ArrayDeque<>();
+
+    /**
+     * Default constructor
+     */
     public ParallelMapperImpl() {}
 
+    /**
+     * Constructor from threads.
+     * @param threads number of worker threads
+     */
     public ParallelMapperImpl(int threads) {
         state = State.NOT_RUNNING;
         workers = new ParallelUtils.ReusedWorker[threads];
         for (int i = 0; i < threads; ++i)
             workers[i] = new ParallelUtils.ReusedWorker();
     }
-
+    /**
+     * Does parallel evaluation {@param f} on {@param args}. Degree of parallelism definite by constructor.
+     * @param f function for mapping.
+     * @param args arguments for mapping.
+     * @param <T> template param.
+     * @param <R> template param.
+     * @return result of evaluation.
+     * @throws InterruptedException if ParallelMapper instance was close.
+     */
     public <T, R> List<R> map(
             Function<? super T, ? extends R> f,
             List<? extends T> args)
             throws InterruptedException {
         synchronized (this) {
             queue.add(Thread.currentThread());
-            //System.err.println("state = " + state);
-            //System.out.println(queue.peekFirst() + " " + Thread.currentThread());
             while (state == State.RUNNING || queue.peekFirst() != Thread.currentThread()) {
                 wait();
             }
@@ -89,16 +103,17 @@ public class ParallelMapperImpl implements ParallelMapper {
         return result;
     }
 
-
+    /**
+     * Close all worker threads.
+     * @throws InterruptedException if already closed
+     */
     public synchronized void close() throws InterruptedException {
+        if (state == State.CLOSED)
+            throw new InterruptedException();
         for (int i = 0; i < workers.length; ++i)
             workers[i].close();
         state = State.CLOSED;
     }
 
-
-    public State getState() {
-        return state;
-    }
 }
 
