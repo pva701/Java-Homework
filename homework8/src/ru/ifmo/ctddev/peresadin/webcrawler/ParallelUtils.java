@@ -1,16 +1,10 @@
 package ru.ifmo.ctddev.peresadin.webcrawler;
 
-import info.kgeorgiy.java.advanced.crawler.Document;
-import info.kgeorgiy.java.advanced.crawler.URLUtils;
-
-import java.io.IOException;
-import java.util.Deque;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.*;
 
 /**
  * Created by pva701 on 4/3/15.
@@ -19,12 +13,11 @@ public class ParallelUtils {
     private ParallelUtils() {}
 
     public static abstract class AbstractThreadPool<T> {
-        protected final BlockingQueue<T> tasksQueue;
+        protected final BlockingQueue<T> tasksQueue = new LinkedBlockingQueue<>();
         protected Thread[] workers;
 
         public AbstractThreadPool(int threads) {
-            threads = Math.min(threads, 250);
-            tasksQueue = new LinkedBlockingQueue<>();
+            threads = Math.min(threads, 300);
             workers = new Thread[threads];
             for (int i = 0; i < threads; ++i) {
                 workers[i] = createThread();
@@ -81,7 +74,8 @@ public class ParallelUtils {
     }
 
     public static class HostLimitThreadPool extends AbstractThreadPool<UrlDownloadTask> {
-        private final Map<String, Integer> countDownloadsFromHost = new HashMap<>();
+        private final ConcurrentMap<String, ConcurrentLinkedQueue<UrlDownloadTask> > otherQue = new ConcurrentHashMap<>();
+        private final ConcurrentMap<String, Integer> countDownloadsFromHost = new ConcurrentHashMap<>();
 
         private int perHost;
         public HostLimitThreadPool(int threads, int perHost) {
@@ -90,27 +84,36 @@ public class ParallelUtils {
         }
 
         @Override
-        protected void handleTask(UrlDownloadTask task) {
+        public void execute(UrlDownloadTask task) {
             String host = task.host;
             synchronized (this) {
-                if (!countDownloadsFromHost.containsKey(host)) {
-                    countDownloadsFromHost.put(host, 0);
-                }
-                int cnt = countDownloadsFromHost.get(host);
+                int cnt = countDownloadsFromHost.getOrDefault(host, 0);
                 if (cnt < perHost) {
+                    tasksQueue.add(task);
                     countDownloadsFromHost.put(host, cnt + 1);
                 } else {
-                    try {
-                        tasksQueue.put(task);
-                    } catch (InterruptedException ignore) {
-                        Thread.currentThread().interrupt();
-                    }
-                    return;
+                    otherQue.putIfAbsent(host, new ConcurrentLinkedQueue<>());
+                    otherQue.get(host).add(task);
                 }
             }
+        }
+
+        @Override
+        protected void handleTask(UrlDownloadTask task) {
+            String host = task.host;
             task.runnable.run();
-            synchronized (countDownloadsFromHost) {
+            synchronized (this) {
                 countDownloadsFromHost.put(host, countDownloadsFromHost.get(host) - 1);
+                otherQue.putIfAbsent(host, new ConcurrentLinkedQueue<>());
+                ConcurrentLinkedQueue<UrlDownloadTask> que = otherQue.get(host);
+                while (countDownloadsFromHost.getOrDefault(host, 0) < perHost && que.size() != 0 && !Thread.interrupted()) {
+                    countDownloadsFromHost.put(host, countDownloadsFromHost.getOrDefault(host, 0) + 1);
+                    try {
+                        tasksQueue.put(que.poll());
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
             }
         }
     }

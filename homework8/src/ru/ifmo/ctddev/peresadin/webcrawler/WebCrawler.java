@@ -10,11 +10,18 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class WebCrawler implements Crawler {
     private Downloader downloader;
     private ParallelUtils.HostLimitThreadPool downloadThreadPool;
     private ParallelUtils.ThreadPool extractorThreadPool;
+    private final ConcurrentMap<String, Future<Document> > loadedPages = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Document, Future<List<String>>> extractedPages = new ConcurrentHashMap<>();
+    private final AtomicInteger counterDownloads = new AtomicInteger(0);
+    private final ReentrantLock lock = new ReentrantLock();
+    private final Condition empty = lock.newCondition();
 
     public WebCrawler(Downloader downloader, int downloaders, int extractors, int perHost) {
         this.downloader = downloader;
@@ -22,22 +29,20 @@ public class WebCrawler implements Crawler {
         extractorThreadPool = new ParallelUtils.ThreadPool(extractors);
     }
 
-    private void decCounter(AtomicInteger counter) {
-        synchronized (counter) {
-            counter.decrementAndGet();
-            if (counter.get() == 0)
-                counter.notify();
-        }
+    private void decCounter() {
+        lock.lock();
+        counterDownloads.decrementAndGet();
+        if (counterDownloads.get() == 0)
+            empty.signal();
+        lock.unlock();
     }
 
     private void runDownload(
             String url,
             final int curDepth,
             final int maxDepth,
-            final List<String> result,
-            final ConcurrentMap<String, Future<Document> > loadedPages,
-            final ConcurrentMap<Document, Future<List<String>>> extractedPages,
-            final AtomicInteger counterDownloads) {
+            final List<String> result) {
+
         counterDownloads.incrementAndGet();
 
         String host = null;
@@ -47,7 +52,7 @@ public class WebCrawler implements Crawler {
             printEx(e);
         }
         if (host == null) {
-            decCounter(counterDownloads);
+            decCounter();
             return;
         }
 
@@ -69,7 +74,7 @@ public class WebCrawler implements Crawler {
             try {
                 final Document doc = loadedPages.get(url).get();
                 if (doc == null) {
-                    decCounter(counterDownloads);
+                    decCounter();
                     return;
                 }
 
@@ -93,17 +98,17 @@ public class WebCrawler implements Crawler {
                         }
                         if (curDepth < maxDepth) {
                             for (String e : links)
-                                runDownload(e, curDepth + 1, maxDepth, result, loadedPages, extractedPages, counterDownloads);
+                                runDownload(e, curDepth + 1, maxDepth, result);
                         }
                     } catch (Exception e) {
                         printEx(e);
                     } finally {
-                        decCounter(counterDownloads);
+                        decCounter();
                     }
                 });
             } catch (Exception e) {
                 printEx(e);
-                decCounter(counterDownloads);
+                decCounter();
             }
         }, host));
 
@@ -113,16 +118,16 @@ public class WebCrawler implements Crawler {
     public List<String> download(String url, int depth) throws IOException {
         List<String> ret = new ArrayList<>();
         ret.add(url);
-        AtomicInteger counter = new AtomicInteger(0);
-        runDownload(url, 1, depth, ret, new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), counter);
-        synchronized (counter) {
-            while (counter.get() != 0) {
-                try {
-                    counter.wait();
-                } catch (InterruptedException e) {}
+        runDownload(url, 1, depth, ret);
+        lock.lock();
+        try {
+            while (counterDownloads.get() != 0) {
+                empty.await();
             }
+        } catch (InterruptedException e) {}
+        finally {
+            lock.unlock();
         }
-        //System.out.println("links size = " + ret.size());
         return ret;
     }
 

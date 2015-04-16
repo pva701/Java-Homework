@@ -30,7 +30,7 @@ public class CrawlerEasyTest {
         }
     };
 
-    /*@Test
+    @Test
     public void test01_singlePage() throws IOException {
         test("http://en.ifmo.ru/en/page/50/Partnership.htm", 1);
     }
@@ -63,7 +63,7 @@ public class CrawlerEasyTest {
     @Test
     public void test07_limitBoth() throws IOException {
         test(10, 10, Integer.MAX_VALUE, 300, 300);
-    }*/
+    }
 
     @Test
     public void test08_performance() throws IOException {
