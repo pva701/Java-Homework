@@ -4,9 +4,11 @@ import info.kgeorgiy.java.advanced.crawler.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class WebCrawler implements Crawler {
@@ -18,17 +20,6 @@ public class WebCrawler implements Crawler {
         this.downloader = downloader;
         downloadThreadPool = new ParallelUtils.HostLimitThreadPool(downloaders, perHost);
         extractorThreadPool = new ParallelUtils.ThreadPool(extractors);
-    }
-
-    private Document download(String url, Map<String, Document> loadedPages) {
-        if (loadedPages.containsKey(url))
-            return loadedPages.get(url);
-        try {
-            return downloader.download(url);
-        } catch (IOException e) {
-            printEx(e);
-            return null;
-        }
     }
 
     private void decCounter(AtomicInteger counter) {
@@ -44,7 +35,8 @@ public class WebCrawler implements Crawler {
             final int curDepth,
             final int maxDepth,
             final List<String> result,
-            Map<String, Document> loadedPages,
+            final ConcurrentMap<String, Future<Document> > loadedPages,
+            final ConcurrentMap<Document, Future<List<String>>> extractedPages,
             final AtomicInteger counterDownloads) {
         counterDownloads.incrementAndGet();
 
@@ -61,27 +53,55 @@ public class WebCrawler implements Crawler {
 
         downloadThreadPool.execute(new ParallelUtils.UrlDownloadTask(
         ()->{
-            final Document doc = download(url, loadedPages);
-            if (doc == null) {
-                decCounter(counterDownloads);
-                return;
-            }
-            loadedPages.put(url, doc);
-            extractorThreadPool.execute(() -> {
+            FutureTask<Document> futureDownload = new FutureTask<>(()->{
                 try {
-                    List<String> links = doc.extractLinks();
-                    synchronized (result) {
-                        result.addAll(links);
-                    }
-                    if (curDepth < maxDepth) {
-                        for (String e : links)
-                            runDownload(e, curDepth + 1, maxDepth, result, loadedPages, counterDownloads);
-                    }
+                    return downloader.download(url);
                 } catch (IOException e) {
                     printEx(e);
+                    return null;
                 }
-                decCounter(counterDownloads);
             });
+
+            if (loadedPages.putIfAbsent(url, futureDownload) == null) {
+                futureDownload.run();
+            }
+
+            try {
+                final Document doc = loadedPages.get(url).get();
+
+                extractorThreadPool.execute(() -> {
+                    FutureTask<List<String>> futureExtract = new FutureTask<>(()->{
+                        try {
+                            return doc.extractLinks();
+                        } catch (IOException e) {
+                            printEx(e);
+                            return null;
+                        }
+                    });
+
+                    if (extractedPages.putIfAbsent(doc, futureExtract) == null) {
+                        futureExtract.run();
+                    }
+
+                    try {
+                        final List<String> links = extractedPages.get(doc).get();
+                        synchronized (result) {
+                            result.addAll(links);
+                        }
+                        if (curDepth < maxDepth) {
+                            for (String e : links)
+                                runDownload(e, curDepth + 1, maxDepth, result, loadedPages, extractedPages, counterDownloads);
+                        }
+                    } catch (Exception e) {
+                        printEx(e);
+                    } finally {
+                        decCounter(counterDownloads);
+                    }
+                });
+            } catch (Exception e) {
+                printEx(e);
+                decCounter(counterDownloads);
+            }
         }, host));
 
     }
@@ -89,8 +109,9 @@ public class WebCrawler implements Crawler {
     @Override
     public List<String> download(String url, int depth) throws IOException {
         List<String> ret = new ArrayList<>();
+        ret.add(url);
         AtomicInteger counter = new AtomicInteger(0);
-        runDownload(url, 1, depth, ret, new HashMap<>(), counter);
+        runDownload(url, 1, depth, ret, new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), counter);
         synchronized (counter) {
             while (counter.get() != 0) {
                 try {

@@ -19,6 +19,7 @@ public class ParallelUtils {
         protected final Deque<T> tasksQueue = new LinkedList<>();
         protected Thread[] workers;
         public AbstractThreadPool(int threads) {
+            threads = Math.min(threads, 10);
             workers = new Thread[threads];
             for (int i = 0; i < threads; ++i) {
                 workers[i] = createThread();
