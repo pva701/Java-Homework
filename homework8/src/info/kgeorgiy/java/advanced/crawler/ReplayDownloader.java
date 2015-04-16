@@ -40,12 +40,12 @@ public class ReplayDownloader implements Downloader {
         if (links == null) {
             throw new AssertionError("Unknown page " + url);
         }
-        System.out.println("Downloading " + url);
+        //System.out.println("Downloading " + url);
         sleep(downloadDelay);
-        System.out.println("Downloaded " + url);
+        //System.out.println("Downloaded " + url);
         return () -> {
             sleep(extractDelay);
-            System.out.println("Links for " + url + ": " + links);
+            //System.out.println("Links for " + url + ": " + links);
             return links;
         };
     }

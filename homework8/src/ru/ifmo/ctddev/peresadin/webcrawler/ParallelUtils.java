@@ -8,6 +8,9 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * Created by pva701 on 4/3/15.
@@ -16,10 +19,12 @@ public class ParallelUtils {
     private ParallelUtils() {}
 
     public static abstract class AbstractThreadPool<T> {
-        protected final Deque<T> tasksQueue = new LinkedList<>();
+        protected final BlockingQueue<T> tasksQueue;
         protected Thread[] workers;
+
         public AbstractThreadPool(int threads) {
-            threads = Math.min(threads, 10);
+            threads = Math.min(threads, 250);
+            tasksQueue = new LinkedBlockingQueue<>();
             workers = new Thread[threads];
             for (int i = 0; i < threads; ++i) {
                 workers[i] = createThread();
@@ -28,35 +33,28 @@ public class ParallelUtils {
         }
 
         public void execute(T task) {
-            synchronized (tasksQueue) {
-                tasksQueue.add(task);
-                tasksQueue.notify();
+            try {
+                tasksQueue.put(task);
+            } catch (InterruptedException ignore) {
+                Thread.currentThread().interrupt();
             }
         }
 
         protected Thread createThread() {
             return new Thread(()->{
                 while (!Thread.interrupted()) {
-                    T curTask;
-                    synchronized (tasksQueue) {
-                        if (tasksQueue.isEmpty()) {
-                            try {
-                                tasksQueue.wait();
-                            } catch (InterruptedException e) {
-                                return;
-                            }
-                        }
-                        curTask = tasksQueue.pollFirst();
+                    try {
+                        handleTask(tasksQueue.take());
+                    } catch (InterruptedException ignore) {
+                        Thread.currentThread().interrupt();
                     }
-                    if (curTask != null)
-                        handleTask(curTask);
                 }
             });
         }
 
         public void close() {
-            for (int i = 0; i < workers.length; ++i)
-                workers[i].interrupt();
+            for (Thread e : workers)
+                e.interrupt();
         }
 
         protected abstract void handleTask(T task);
@@ -98,16 +96,20 @@ public class ParallelUtils {
                 if (!countDownloadsFromHost.containsKey(host)) {
                     countDownloadsFromHost.put(host, 0);
                 }
-
-                if (countDownloadsFromHost.get(host) < perHost) {
-                    countDownloadsFromHost.put(host, countDownloadsFromHost.get(host) + 1);
+                int cnt = countDownloadsFromHost.get(host);
+                if (cnt < perHost) {
+                    countDownloadsFromHost.put(host, cnt + 1);
                 } else {
-                    tasksQueue.add(task);
+                    try {
+                        tasksQueue.put(task);
+                    } catch (InterruptedException ignore) {
+                        Thread.currentThread().interrupt();
+                    }
                     return;
                 }
             }
             task.runnable.run();
-            synchronized (this) {
+            synchronized (countDownloadsFromHost) {
                 countDownloadsFromHost.put(host, countDownloadsFromHost.get(host) - 1);
             }
         }

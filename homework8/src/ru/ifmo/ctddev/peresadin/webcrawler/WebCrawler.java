@@ -68,6 +68,10 @@ public class WebCrawler implements Crawler {
 
             try {
                 final Document doc = loadedPages.get(url).get();
+                if (doc == null) {
+                    decCounter(counterDownloads);
+                    return;
+                }
 
                 extractorThreadPool.execute(() -> {
                     FutureTask<List<String>> futureExtract = new FutureTask<>(()->{
@@ -78,7 +82,6 @@ public class WebCrawler implements Crawler {
                             return null;
                         }
                     });
-
                     if (extractedPages.putIfAbsent(doc, futureExtract) == null) {
                         futureExtract.run();
                     }
@@ -119,6 +122,7 @@ public class WebCrawler implements Crawler {
                 } catch (InterruptedException e) {}
             }
         }
+        //System.out.println("links size = " + ret.size());
         return ret;
     }
 
@@ -128,7 +132,7 @@ public class WebCrawler implements Crawler {
         extractorThreadPool.close();
     }
 
-    public static boolean DEBUG = true;
+    public static boolean DEBUG = false;
     public static void printEx(Exception e) {
         if (DEBUG) {
             e.printStackTrace();
