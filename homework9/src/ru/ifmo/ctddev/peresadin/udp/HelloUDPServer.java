@@ -1,3 +1,5 @@
+package ru.ifmo.ctddev.peresadin.udp;
+
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -31,6 +33,7 @@ public class HelloUDPServer {
         byte[] sendBytes = msg.getBytes();
         try {
             //System.out.println(sendBytes.length);
+            System.out.println(packet.getPort());
             server.send(new DatagramPacket(sendBytes, 0, sendBytes.length, packet.getAddress(), packet.getPort()));
         } catch (IOException e) {
             System.out.println("Server can't send response to client!");
