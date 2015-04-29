@@ -4,6 +4,8 @@ import info.kgeorgiy.java.advanced.hello.HelloClient;
 
 import java.io.IOException;
 import java.net.*;
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
@@ -14,21 +16,17 @@ import java.util.concurrent.locks.ReentrantLock;
 public class HelloUDPClient implements HelloClient {
     public static int BUFFER_SIZE = 64*1024;
 
-    private void threadDone(ReentrantLock lock, Condition allDoneCond, AtomicInteger threadCounter) {
-        lock.lock();
-        if (threadCounter.decrementAndGet() == 0)
-            allDoneCond.signal();
-        lock.unlock();
+    public static void barrierAwait(CyclicBarrier barrier) {
+        try {
+            barrier.await();
+        } catch (BrokenBarrierException | InterruptedException e) {}
     }
 
     @Override
     public void start(String host, int port, String prefix, int requests, int threads)  {
         try {
-            AtomicInteger countThreads = new AtomicInteger(threads);
-            ReentrantLock lock = new ReentrantLock();
-            Condition allDoneCond = lock.newCondition();
-
             InetAddress inetAddress = InetAddress.getByName(host);
+            CyclicBarrier barrier = new CyclicBarrier(threads + 1);
             for (int i = 0; i < threads; ++i) {
                 final int numThread = i;
                 new Thread(()->{
@@ -53,20 +51,15 @@ public class HelloUDPClient implements HelloClient {
                                 System.out.println(new String(inPacket.getData(), 0, inPacket.getLength()));
                             } catch (IOException e) {
                                 --j;
-                                System.out.println("can't receive message");
+                                //System.out.println("can't receive message");
                             }
                         }
                     } catch (SocketException e) {}
-                    threadDone(lock, allDoneCond, countThreads);
+                    barrierAwait(barrier);
                 }).start();
             }
 
-            try {
-                lock.lock();
-                while (countThreads.get() != 0)
-                    allDoneCond.await();
-                lock.unlock();
-            } catch (InterruptedException e) {}
+            barrierAwait(barrier);
         } catch (UnknownHostException e) {
         }
     }
