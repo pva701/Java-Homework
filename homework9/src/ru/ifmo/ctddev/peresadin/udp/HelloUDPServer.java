@@ -17,13 +17,7 @@ public class HelloUDPServer implements HelloServer {
 
     private ThreadPoolExecutor executor;
     private DatagramSocket server;
-    private Thread loopThread;
-
-    public static void barrierAwait(CyclicBarrier barrier) {
-        try {
-            barrier.await();
-        } catch (BrokenBarrierException | InterruptedException e) {}
-    }
+    private Thread[] loopThreads;
 
     @Override
     public void start(int port, int threads) {
@@ -33,33 +27,36 @@ public class HelloUDPServer implements HelloServer {
             //e.printStackTrace();
             return;
         }
-
-        loopThread = new Thread(()->{
-            executor = new ThreadPoolExecutor(threads, threads, Long.MAX_VALUE, TimeUnit.NANOSECONDS, new LinkedBlockingQueue<>());
-            byte[] buf = new byte[BUFFER_SIZE];
-            DatagramPacket packet = new DatagramPacket(buf, buf.length);
-            while (!Thread.interrupted()) {
-                try {
-                    server.receive(packet);
-                    String msg = "Hello, " + new String(packet.getData(), 0, packet.getLength());
-                    //System.out.println("rec = " + msg);
-                    InetAddress ip = packet.getAddress();
-                    int portPacket = packet.getPort();
-                    executor.submit(() -> sendResponse(msg, ip, portPacket));
-                } catch (IOException e) {
-                    //System.out.println("ex receive");
-                    //e.printStackTrace();
+        loopThreads = new Thread[threads];
+        for (int i = 0; i < threads; ++i) {
+            loopThreads[i] = new Thread(()->{
+                executor = new ThreadPoolExecutor(threads, threads, Long.MAX_VALUE, TimeUnit.NANOSECONDS, new LinkedBlockingQueue<>());
+                byte[] buf = new byte[BUFFER_SIZE];
+                DatagramPacket packet = new DatagramPacket(buf, buf.length);
+                while (!Thread.interrupted()) {
+                    try {
+                        server.receive(packet);
+                        String msg = "Hello, " + new String(packet.getData(), 0, packet.getLength());
+                        //System.out.println("rec = " + msg);
+                        InetAddress ip = packet.getAddress();
+                        int portPacket = packet.getPort();
+                        executor.submit(() -> sendResponse(msg, ip, portPacket));
+                    } catch (IOException e) {
+                        //System.out.println("ex receive");
+                        //e.printStackTrace();
+                    }
                 }
-            }
-        });
-        loopThread.start();
+            });
+            loopThreads[i].start();
+        }
     }
 
     @Override
     public void close() {
         server.close();
         executor.shutdown();
-        loopThread.interrupt();
+        for (int i = 0; i < loopThreads.length; ++i)
+            loopThreads[i].interrupt();
     }
 
     public HelloUDPServer() {
