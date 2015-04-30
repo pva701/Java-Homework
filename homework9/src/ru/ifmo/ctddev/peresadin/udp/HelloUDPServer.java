@@ -27,16 +27,14 @@ public class HelloUDPServer implements HelloServer {
 
     @Override
     public void start(int port, int threads) {
-        CyclicBarrier barrier = new CyclicBarrier(2);
+        try {
+            server = new DatagramSocket(port);
+        } catch (SocketException e) {
+            //e.printStackTrace();
+            return;
+        }
+
         loopThread = new Thread(()->{
-            //System.out.println("here = " + port + " threads = " + threads);
-            try {
-                server = new DatagramSocket(port);
-            } catch (SocketException e) {
-                //e.printStackTrace();
-                return;
-            }
-            barrierAwait(barrier);
             executor = new ThreadPoolExecutor(threads, threads, Long.MAX_VALUE, TimeUnit.NANOSECONDS, new LinkedBlockingQueue<>());
             byte[] buf = new byte[BUFFER_SIZE];
             DatagramPacket packet = new DatagramPacket(buf, buf.length);
@@ -55,7 +53,6 @@ public class HelloUDPServer implements HelloServer {
             }
         });
         loopThread.start();
-        barrierAwait(barrier);
     }
 
     @Override
