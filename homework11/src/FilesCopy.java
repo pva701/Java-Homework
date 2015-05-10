@@ -1,11 +1,8 @@
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.Timer;
-import java.util.TimerTask;
 
 /**
  * Created by pva701 on 5/10/15.
@@ -61,7 +58,7 @@ public class FilesCopy {
         /*new Timer().schedule(new TimerTask() {
             @Override
             public void run() {
-                currentState.passedSecs++;
+                currentState.elapsedSecs++;
             }
         }, 1000, 1000);*/
 
@@ -112,8 +109,8 @@ public class FilesCopy {
                         os.write(bytes, 0, c);
                         currentState.copyBytes(c);
                         int sec = (int)((System.currentTimeMillis() - startTime) / 1000);
-                        if (sec > currentState.passedSecs) {
-                            currentState.passedSecs = sec;
+                        if (sec > currentState.elapsedSecs) {
+                            currentState.elapsedSecs = sec;
                             observer.onChangeState(currentState);
                             currentState.resetCurrentSpeed();
                         }
@@ -133,25 +130,25 @@ public class FilesCopy {
     public class State {
         private long totalSize;
         private long copiedSize;
-        private int passedSecs;
+        private int elapsedSecs;
         private int currentSpeed;
 
         public int getProgress() {
             return (int)(copiedSize * 1.0 / totalSize) * 100;
         }
 
-        public int getPassedSecs() {
-            return passedSecs;
+        public int getElapsedSecs() {
+            return elapsedSecs;
         }
 
         public int getRemainSecs() {
             if (copiedSize == 0)
                 return Integer.MAX_VALUE;
-            return (int)(1L * passedSecs * (totalSize - copiedSize) / copiedSize);
+            return (int)(1L * elapsedSecs * (totalSize - copiedSize) / copiedSize);
         }
 
         public int getAverageSpeed() {
-            return (int)(copiedSize / passedSecs);
+            return (int)(copiedSize / elapsedSecs);
         }
 
         public int getCurrentSpeed() {
