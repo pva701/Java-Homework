@@ -4,6 +4,7 @@ import info.kgeorgiy.java.advanced.hello.HelloClient;
 
 import java.io.IOException;
 import java.net.*;
+import java.nio.charset.Charset;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -14,9 +15,10 @@ import java.util.concurrent.locks.ReentrantLock;
  * Created by pva701 on 4/27/15.
  */
 public class HelloUDPClient implements HelloClient {
-    public static int BUFFER_SIZE = 64*1024;
+    //public static int BUFFER_SIZE = 1500;
+    public static final Charset DEF_CHARSET = Charset.forName("UTF-8");
 
-    public static void barrierAwait(CyclicBarrier barrier) {
+    private static void barrierAwait(CyclicBarrier barrier) {
         try {
             barrier.await();
         } catch (BrokenBarrierException | InterruptedException e) {}
@@ -30,24 +32,27 @@ public class HelloUDPClient implements HelloClient {
             for (int i = 0; i < threads; ++i) {
                 final int numThread = i;
                 new Thread(()->{
-                    //System.out.println("thread = " + numThread + " req = " + requests);
-                    byte[] buf = new byte[BUFFER_SIZE];
-                    DatagramPacket inPacket = new DatagramPacket(buf, 0, buf.length);
                     try (DatagramSocket socket = new DatagramSocket()) {
                         socket.setSoTimeout(500);
+                        byte[] inBuf = new byte[socket.getReceiveBufferSize()];
+                        DatagramPacket inPacket = new DatagramPacket(inBuf, 0, inBuf.length);
                         for (int j = 0; j < requests; ++j) {
-                            byte[] tmp = (prefix + numThread + "_" + j).getBytes();
-                            //System.arraycopy(tmp, 0, buf, 0, tmp.length);
+                            String reqStr = (prefix + numThread + "_" + j);
+                            byte[] tmp = reqStr.getBytes(DEF_CHARSET);
                             DatagramPacket outPacket = new DatagramPacket(tmp, 0, tmp.length, inetAddress, port);
                             try {
                                 socket.send(outPacket);
                             } catch (IOException e) {
                                 System.out.println("fail send message!");
-                                continue;
+                                 break;
                             }
 
                             try {
                                 socket.receive(inPacket);
+                                String resStr = new String(inPacket.getData(), 0, inPacket.getLength());
+                                if (!resStr.equals("Hello, " + reqStr)) {
+                                    --j;
+                                }
                                 System.out.println(new String(inPacket.getData(), 0, inPacket.getLength()));
                             } catch (IOException e) {
                                 --j;
@@ -58,7 +63,6 @@ public class HelloUDPClient implements HelloClient {
                     barrierAwait(barrier);
                 }).start();
             }
-
             barrierAwait(barrier);
         } catch (UnknownHostException e) {
         }
