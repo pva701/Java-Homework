@@ -1,5 +1,7 @@
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -19,7 +21,15 @@ public class UIFileCopy extends JFrame {
         panel.add(new JLabel("Осталось: "));
         panel.add(new JLabel("Средняя скорость: "));
         panel.add(new JLabel("Текущая скорость: "));
-        panel.add(new JButton("Отмена"));
+
+        JButton button = new JButton("Отмена");
+        button.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                System.out.println("clicked cancel");
+            }
+        });
+        panel.add(button);
     }
 
     public static void main(String[] args) throws IOException {
@@ -34,8 +44,15 @@ public class UIFileCopy extends JFrame {
 
         mainWindow.pack();
         mainWindow.setVisible(true);
+        //new FilesCopy(Paths.get("/home/pva701/homework4"), Paths.get(".")).start();
+        /*try {
+            String hello = "hello";
+            Files.newOutputStream(Paths.get("/home/pva701/homework4/hello.txt")).write(hello.getBytes());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }*/
 
-        Files.copy(Paths.get("/home/pva701/homework4/scripts/"),
-                Paths.get("/home/pva701/IdeaProjects/scripts/"));
+        //Files.copy(Paths.get("/home/pva701/homework4/scripts/"),
+          //      Paths.get("/home/pva701/IdeaProjects/scripts/"));
     }
 }
