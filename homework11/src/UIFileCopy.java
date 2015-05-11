@@ -1,5 +1,6 @@
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Path;
@@ -136,7 +137,9 @@ public class UIFileCopy extends JFrame {
     }
 
     public static void main(String[] args) throws IOException {
-        FilesCopy filesCopy = new FilesCopy(Paths.get("/home/pva701/IdeaProjects/"), Paths.get("/home/pva701/tmp/"));
+        String from = "/home/pva701/IdeaProject/";
+        String to = "/home/pva701/tmp/";
+        FilesCopy filesCopy = new FilesCopy(Paths.get(from), Paths.get(to));
         UIFileCopy mainWindow = new UIFileCopy("UIFileCopy", filesCopy);
         mainWindow.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         mainWindow.pack();
@@ -145,7 +148,9 @@ public class UIFileCopy extends JFrame {
         try {
             filesCopy.start();
         } catch (RuntimeException e) {
-            e.printStackTrace();
+            JOptionPane.showMessageDialog(mainWindow.getContentPane(), e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            mainWindow.dispatchEvent(new WindowEvent(mainWindow, WindowEvent.WINDOW_CLOSING));
+            //e.printStackTrace();
         }
         /*try {
             String hello = "hello";
