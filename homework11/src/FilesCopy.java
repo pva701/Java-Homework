@@ -10,7 +10,6 @@ import java.nio.file.attribute.BasicFileAttributes;
 public class FilesCopy {
     private Observer observer = new Observer();
 
-    private boolean isCanceled;
     private Path source;
     private Path target;
     private long startTime;
@@ -23,7 +22,7 @@ public class FilesCopy {
     }
 
     public void start() throws IOException {
-        if (isCanceled)
+        if (currentState.status == State.Status.CANCELED)
             throw new IllegalStateException("Already terminated!");
         if (Files.notExists(source))
             throw new IllegalArgumentException("Source file doesn't exist!");
@@ -32,32 +31,43 @@ public class FilesCopy {
         if (Files.isRegularFile(target) && !Files.isRegularFile(source))
             throw new IllegalArgumentException("Can't copy folder to file!");
 
+        startTime = System.currentTimeMillis();
+
+        setStatusAndPublish(State.Status.PRE);
         Files.walkFileTree(source, new SimpleFileVisitor<Path>() {
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                if (isCanceled)
+                if (currentState.isCancelled())
                     return FileVisitResult.TERMINATE;
+                publish();
                 currentState.totalSize += Files.size(file);
                 return FileVisitResult.CONTINUE;
             }
 
             @Override
             public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-                if (isCanceled)
+                if (currentState.isCancelled())
                     return FileVisitResult.TERMINATE;
+                publish();
                 currentState.totalSize += Files.size(dir);
                 return FileVisitResult.CONTINUE;
             }
         });
-        System.out.println("total size = " + currentState.totalSize);
+        if (currentState.isCancelled())
+            return;
 
-        startTime = System.currentTimeMillis();
+        setStatusAndPublish(State.Status.COPYING);
         Files.walkFileTree(source, new CopyFileVisitor());
-        isCanceled = true;
+        if (currentState.isCancelled())
+            return;
+        currentState.copiedSize = currentState.totalSize;
+        setStatusAndPublish(State.Status.FINISHED);
     }
 
     public void cancel() {
-        isCanceled = true;
+        if (currentState.isFinished())
+            return;
+        setStatusAndPublish(State.Status.CANCELED);
     }
 
     public void setObserver(Observer observer) {
@@ -65,12 +75,26 @@ public class FilesCopy {
     }
 
 
+    private void setStatusAndPublish(State.Status status) {
+        currentState.status = status;
+        observer.onChangeState(currentState);
+    }
+
+    private void publish() {
+        int sec = (int)((System.currentTimeMillis() - startTime) / 1000);
+        if (sec > currentState.elapsedSecs) {
+            currentState.elapsedSecs = sec;
+            observer.onChangeState(currentState);
+            currentState.resetCurrentSpeed();
+        }
+    }
+
     public class CopyFileVisitor extends SimpleFileVisitor<Path> {
         public static final int BUFFER_SIZE = 4096;
 
         @Override
         public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-            if (isCanceled)
+            if (currentState.isCancelled())
                 return FileVisitResult.TERMINATE;
             Path newDir = target.resolve(source.relativize(dir));
             currentState.copyBytes((int)Files.size(dir));
@@ -89,7 +113,7 @@ public class FilesCopy {
 
         @Override
         public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-            if (isCanceled)
+            if (currentState.isCancelled())
                 return FileVisitResult.TERMINATE;
             Path newFile = target.resolve(source.relativize(file));
             //System.out.println("new file = " + newFile.toString());
@@ -103,21 +127,17 @@ public class FilesCopy {
                 try (OutputStream os = Files.newOutputStream(newFile)) {
                     byte[] bytes = new byte[BUFFER_SIZE];
                     int c = 0;
-                    while ((c = is.read(bytes)) >= 0 && !isCanceled) {
+                    while ((c = is.read(bytes)) >= 0 && !currentState.isCancelled()) {
                         os.write(bytes, 0, c);
                         currentState.copyBytes(c);
-                        int sec = (int)((System.currentTimeMillis() - startTime) / 1000);
-                        if (sec > currentState.elapsedSecs) {
-                            currentState.elapsedSecs = sec;
-                            observer.onChangeState(currentState);
-                            currentState.resetCurrentSpeed();
-                        }
+                        publish();
                     }
                 }
             }
             return FileVisitResult.CONTINUE;
         }
     }
+
 
     public static class Observer {
         public void onChangeState(State state) {
@@ -130,14 +150,18 @@ public class FilesCopy {
         }
     }
 
-    public class State {
+    public static class State {
+        public enum Status {PRE, COPYING, CANCELED, FINISHED}
+        private Status status;
         private long totalSize;
         private long copiedSize;
         private int elapsedSecs;
         private int currentSpeed;
 
         public int getProgress() {
-            return (int)(copiedSize * 1.0 / totalSize) * 100;
+            if (status == Status.FINISHED)
+                return 100;
+            return (int)(copiedSize * 1.0 / totalSize * 100);
         }
 
         public int getElapsedSecs() {
@@ -151,6 +175,8 @@ public class FilesCopy {
         }
 
         public int getAverageSpeed() {
+            if (elapsedSecs == 0)
+                return 0;
             return (int)(copiedSize / elapsedSecs);
         }
 
@@ -165,6 +191,18 @@ public class FilesCopy {
 
         private void resetCurrentSpeed() {
             currentSpeed = 0;
+        }
+
+        public Status getStatus() {
+            return status;
+        }
+
+        public boolean isCancelled() {
+            return status == Status.CANCELED;
+        }
+
+        public boolean isFinished() {
+            return status == Status.FINISHED;
         }
     }
 }
