@@ -20,9 +20,9 @@ public class UIFileCopy extends JFrame {
     private JLabel jLblRemSecs = new JLabel();
     private JLabel jLblAvSpeed = new JLabel();
     private JLabel jLblCurSpeed = new JLabel();
-    private JButton jButCancel = new JButton("Отмена");
+    private JButton jButCancel = new JButton("Cancel");
 
-    public UIFileCopy(String title) {
+    public UIFileCopy(String title, FilesCopy filesCopy) {
         super(title);
         JPanel panel = new JPanel();
         panel.setMinimumSize(new Dimension(300, 300));
@@ -33,38 +33,21 @@ public class UIFileCopy extends JFrame {
         panel.add(jLblAvSpeed);
         panel.add(jLblCurSpeed);
         jButCancel.addActionListener(e -> {
-            System.out.println("clicked cancel");
+            filesCopy.cancel();
         });
         panel.add(jButCancel);
 
         add(panel);
-    }
 
-    public void update(FilesCopy.State state) {
-        jProgressBar.setValue(state.getProgress());
-        jLblElapsedSecs.setText("Прошло: " + state.getElapsedSecs() + " сек");
-        jLblRemSecs.setText("Осталось примерно: " + state.getRemainSecs() + " сек");
-        jLblAvSpeed.setText("Средняя скорость: " + state.getAverageSpeed() / 1024 + " Кб/cек");
-        jLblCurSpeed.setText("Текущая скорость: " + state.getCurrentSpeed() / 1024 + " Кб/сек");
-    }
-
-    public static void main(String[] args) throws IOException {
-        UIFileCopy mainWindow = new UIFileCopy("UIFileCopy");
-        mainWindow.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-
-        mainWindow.pack();
-        mainWindow.setVisible(true);
-
-        FilesCopy filesCopy = new FilesCopy(Paths.get("/home/pva701/IdeaProjects"), Paths.get("/home/pva701/hw4"));
         filesCopy.setObserver(new FilesCopy.Observer() {
             @Override
             public void onChangeState(FilesCopy.State state) {
-                mainWindow.update(state);
+                update(state);
             }
 
             @Override
             public FileVisitResult replaceFile(Path path) {
-                System.out.println("replaced file");
+                System.out.println("replaced file = " + path.toString());
                 return FileVisitResult.CONTINUE;
             }
 
@@ -74,6 +57,23 @@ public class UIFileCopy extends JFrame {
                 return FileVisitResult.CONTINUE;
             }
         });
+    }
+
+    public void update(FilesCopy.State state) {
+        jProgressBar.setValue(state.getProgress());
+        jLblElapsedSecs.setText("Elapsed: " + state.getElapsedSecs() + " sec");
+        jLblRemSecs.setText("Remain approximate: " + state.getRemainSecs() + " sec");
+        jLblAvSpeed.setText("Average speed: " + state.getAverageSpeed() / 1024 + " kB/sec");
+        jLblCurSpeed.setText("Current speed: " + state.getCurrentSpeed() / 1024 + " kB/sec");
+    }
+
+    public static void main(String[] args) throws IOException {
+        FilesCopy filesCopy = new FilesCopy(Paths.get("/home/pva701/QtProjects"), Paths.get("/home/pva701/tmp"));
+        UIFileCopy mainWindow = new UIFileCopy("UIFileCopy", filesCopy);
+        mainWindow.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+
+        mainWindow.pack();
+        mainWindow.setVisible(true);
 
         filesCopy.start();
         /*try {

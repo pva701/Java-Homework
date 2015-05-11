@@ -8,21 +8,7 @@ import java.nio.file.attribute.BasicFileAttributes;
  * Created by pva701 on 5/10/15.
  */
 public class FilesCopy {
-    private Observer observer = new Observer() {//Simple Observer
-        @Override
-        public void onChangeState(State state) {
-        }
-
-        @Override
-        public FileVisitResult replaceFile(Path path) {
-            return FileVisitResult.CONTINUE;
-        }
-
-        @Override
-        public FileVisitResult mergeDirectory(Path path) {
-            return FileVisitResult.CONTINUE;
-        }
-    };
+    private Observer observer = new Observer();
 
     private boolean isCanceled;
     private Path source;
@@ -39,49 +25,58 @@ public class FilesCopy {
     public void start() throws IOException {
         if (isCanceled)
             throw new IllegalStateException("Already terminated!");
+        if (Files.notExists(source))
+            throw new IllegalArgumentException("Source file doesn't exist!");
+        if (Files.notExists(target))
+            throw new IllegalArgumentException("Target file doesn't exist!");
+        if (Files.isRegularFile(target) && !Files.isRegularFile(source))
+            throw new IllegalArgumentException("Can't copy folder to file!");
 
         Files.walkFileTree(source, new SimpleFileVisitor<Path>() {
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                if (isCanceled)
+                    return FileVisitResult.TERMINATE;
                 currentState.totalSize += Files.size(file);
                 return FileVisitResult.CONTINUE;
             }
 
             @Override
             public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                if (isCanceled)
+                    return FileVisitResult.TERMINATE;
                 currentState.totalSize += Files.size(dir);
                 return FileVisitResult.CONTINUE;
             }
         });
+        System.out.println("total size = " + currentState.totalSize);
 
         startTime = System.currentTimeMillis();
-        /*new Timer().schedule(new TimerTask() {
-            @Override
-            public void run() {
-                currentState.elapsedSecs++;
-            }
-        }, 1000, 1000);*/
-
         Files.walkFileTree(source, new CopyFileVisitor());
         isCanceled = true;
     }
 
     public void cancel() {
         isCanceled = true;
-        //TODO write this
     }
 
     public void setObserver(Observer observer) {
         this.observer = observer;
     }
 
+
     public class CopyFileVisitor extends SimpleFileVisitor<Path> {
         public static final int BUFFER_SIZE = 4096;
 
         @Override
         public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+            if (isCanceled)
+                return FileVisitResult.TERMINATE;
             Path newDir = target.resolve(source.relativize(dir));
             currentState.copyBytes((int)Files.size(dir));
+            if (newDir.equals(target))
+                return FileVisitResult.CONTINUE;
+
             try {
                 Files.copy(dir, newDir);
             } catch (FileAlreadyExistsException e) {
@@ -94,7 +89,10 @@ public class FilesCopy {
 
         @Override
         public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+            if (isCanceled)
+                return FileVisitResult.TERMINATE;
             Path newFile = target.resolve(source.relativize(file));
+            //System.out.println("new file = " + newFile.toString());
             if (Files.exists(newFile)) {
                 FileVisitResult res = observer.replaceFile(newFile);
                 if (res != FileVisitResult.CONTINUE)
@@ -105,7 +103,7 @@ public class FilesCopy {
                 try (OutputStream os = Files.newOutputStream(newFile)) {
                     byte[] bytes = new byte[BUFFER_SIZE];
                     int c = 0;
-                    while ((c = is.read()) >= 0) {
+                    while ((c = is.read(bytes)) >= 0 && !isCanceled) {
                         os.write(bytes, 0, c);
                         currentState.copyBytes(c);
                         int sec = (int)((System.currentTimeMillis() - startTime) / 1000);
@@ -121,10 +119,15 @@ public class FilesCopy {
         }
     }
 
-    public interface Observer {
-        void onChangeState(State state);
-        FileVisitResult replaceFile(Path path);
-        FileVisitResult mergeDirectory(Path path);
+    public static class Observer {
+        public void onChangeState(State state) {
+        }
+        public FileVisitResult replaceFile(Path path) {
+            return FileVisitResult.CONTINUE;
+        }
+        public FileVisitResult mergeDirectory(Path path) {
+            return FileVisitResult.CONTINUE;
+        }
     }
 
     public class State {
@@ -144,7 +147,7 @@ public class FilesCopy {
         public int getRemainSecs() {
             if (copiedSize == 0)
                 return Integer.MAX_VALUE;
-            return (int)(1L * elapsedSecs * (totalSize - copiedSize) / copiedSize);
+            return (int)(1L * elapsedSecs * (totalSize - copiedSize) / copiedSize);//(total - copied)/avSpeed
         }
 
         public int getAverageSpeed() {
