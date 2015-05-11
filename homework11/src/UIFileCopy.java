@@ -1,14 +1,9 @@
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.attribute.BasicFileAttributes;
 
 /**
  * Created by pva701 on 5/10/15.
@@ -55,16 +50,62 @@ public class UIFileCopy extends JFrame {
                 update(state);
             }
 
+            private boolean skipAll = false;
+            private boolean replaceAll = false;
+
+            private boolean mergeAll = false;
+            private boolean skipAllDirectory = false;
+
             @Override
             public FileVisitResult replaceFile(Path path) {
-                //System.out.println("replaced file = " + path.toString());
-                return FileVisitResult.CONTINUE;
+                if (replaceAll)
+                    return FileVisitResult.CONTINUE;
+                if (skipAll)
+                    return FileVisitResult.SKIP_SUBTREE;
+
+                String[] variants = new String[] {"Replace", "Replace all", "Skip", "Skip all"};
+                Object answer = JOptionPane.showInputDialog(
+                        getContentPane(),
+                        "File '" + path.toString() + "' already exist. Replace?",
+                        "File conflict",
+                        JOptionPane.QUESTION_MESSAGE,
+                        null,
+                        variants, 0);
+                if (answer == null) {
+                    filesCopy.cancel();
+                    return FileVisitResult.TERMINATE;
+                }
+                replaceAll |= answer.equals("Replace all");
+                skipAll |= answer.equals("Skip all");
+                if (answer.equals("Replace") || replaceAll)
+                    return FileVisitResult.CONTINUE;
+                return FileVisitResult.SKIP_SUBTREE;
             }
 
             @Override
             public FileVisitResult mergeDirectory(Path path) {
-                //System.out.println("merge dir");
-                return FileVisitResult.CONTINUE;
+                if (mergeAll)
+                    return FileVisitResult.CONTINUE;
+                if (skipAllDirectory)
+                    return FileVisitResult.SKIP_SUBTREE;
+
+                String[] variants = new String[] {"Merge", "Merge all", "Skip", "Skip all"};
+                Object answer = JOptionPane.showInputDialog(
+                        getContentPane(),
+                        "Directory '" + path.toString() + "' already exist. Merge?",
+                        "Directory conflict",
+                        JOptionPane.QUESTION_MESSAGE,
+                        null,
+                        variants, 0);
+                if (answer == null) {
+                    filesCopy.cancel();
+                    return FileVisitResult.TERMINATE;
+                }
+                mergeAll |= answer.equals("Merge all");
+                skipAllDirectory |= answer.equals("Skip all");
+                if (answer.equals("Merge") || mergeAll)
+                    return FileVisitResult.CONTINUE;
+                return FileVisitResult.SKIP_SUBTREE;
             }
         });
     }
@@ -76,7 +117,7 @@ public class UIFileCopy extends JFrame {
             jLblElapsedSecs.setText("Elapsed: " + state.getElapsedSecs() + " sec");
             if (state.getRemainSecs() != Integer.MAX_VALUE)
                 jLblRemSecs.setText("Remain approximate: " + state.getRemainSecs() + " sec");
-            
+
             jLblAvSpeed.setText("Average speed: " + state.getAverageSpeed() / 1024 + " kB/sec");
             jLblCurSpeed.setText("Current speed: " + state.getCurrentSpeed() / 1024 + " kB/sec");
         } else if (state.getStatus() == FilesCopy.State.Status.PRE) {
@@ -95,13 +136,17 @@ public class UIFileCopy extends JFrame {
     }
 
     public static void main(String[] args) throws IOException {
-        FilesCopy filesCopy = new FilesCopy(Paths.get("/home/pva701/IdeaProjects"), Paths.get("/home/pva701/tmp"));
+        FilesCopy filesCopy = new FilesCopy(Paths.get("/home/pva701/IdeaProjects/"), Paths.get("/home/pva701/tmp/"));
         UIFileCopy mainWindow = new UIFileCopy("UIFileCopy", filesCopy);
         mainWindow.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         mainWindow.pack();
         mainWindow.setVisible(true);
 
-        filesCopy.start();
+        try {
+            filesCopy.start();
+        } catch (RuntimeException e) {
+            e.printStackTrace();
+        }
         /*try {
             String hello = "hello";
             Files.newOutputStream(Paths.get("/home/pva701/homework4/hello.txt")).write(hello.getBytes());

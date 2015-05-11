@@ -25,11 +25,11 @@ public class FilesCopy {
         if (currentState.status == State.Status.CANCELED)
             throw new IllegalStateException("Already terminated!");
         if (Files.notExists(source))
-            throw new IllegalArgumentException("Source file doesn't exist!");
-        if (Files.notExists(target))
-            throw new IllegalArgumentException("Target file doesn't exist!");
+            throw new IllegalArgumentException("Source doesn't exist!");
         if (Files.isRegularFile(target) && !Files.isRegularFile(source))
             throw new IllegalArgumentException("Can't copy folder to file!");
+        if (Files.notExists(target) && !Files.isRegularFile(target))
+          throw new IllegalArgumentException("Target doesn't exist!");
 
         startTime = System.currentTimeMillis();
 
@@ -57,6 +57,8 @@ public class FilesCopy {
             return;
 
         setStatusAndPublish(State.Status.COPYING);
+        if (Files.isRegularFile(source) && !Files.isRegularFile(target))
+            target = target.resolve(source.getFileName());
         Files.walkFileTree(source, new CopyFileVisitor());
         if (currentState.isCancelled())
             return;
@@ -116,13 +118,11 @@ public class FilesCopy {
             if (currentState.isCancelled())
                 return FileVisitResult.TERMINATE;
             Path newFile = target.resolve(source.relativize(file));
-            //System.out.println("new file = " + newFile.toString());
             if (Files.exists(newFile)) {
                 FileVisitResult res = observer.replaceFile(newFile);
                 if (res != FileVisitResult.CONTINUE)
                     return res;
             }
-
             try (InputStream is = Files.newInputStream(file)) {
                 try (OutputStream os = Files.newOutputStream(newFile)) {
                     byte[] bytes = new byte[BUFFER_SIZE];
