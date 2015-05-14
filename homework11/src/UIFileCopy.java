@@ -3,8 +3,13 @@ import java.awt.*;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.*;
+import java.util.List;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.RunnableFuture;
 
 /**
  * Created by pva701 on 5/10/15.
@@ -44,71 +49,6 @@ public class UIFileCopy extends JFrame {
         jButCancel.addActionListener(e -> filesCopy.cancel());
         panel.add(jButCancel);
         add(panel);
-
-        filesCopy.setObserver(new FilesCopy.Observer() {
-            @Override
-            public void onChangeState(FilesCopy.State state) {
-                update(state);
-            }
-
-            private boolean skipAll = false;
-            private boolean replaceAll = false;
-
-            private boolean mergeAll = false;
-            private boolean skipAllDirectory = false;
-
-            @Override
-            public FileVisitResult replaceFile(Path path) {
-                if (replaceAll)
-                    return FileVisitResult.CONTINUE;
-                if (skipAll)
-                    return FileVisitResult.SKIP_SUBTREE;
-
-                String[] variants = new String[] {"Replace", "Replace all", "Skip", "Skip all"};
-                Object answer = JOptionPane.showInputDialog(
-                        getContentPane(),
-                        "File '" + path.toString() + "' already exist. Replace?",
-                        "File conflict",
-                        JOptionPane.QUESTION_MESSAGE,
-                        null,
-                        variants, 0);
-                if (answer == null) {
-                    filesCopy.cancel();
-                    return FileVisitResult.TERMINATE;
-                }
-                replaceAll |= answer.equals("Replace all");
-                skipAll |= answer.equals("Skip all");
-                if (answer.equals("Replace") || replaceAll)
-                    return FileVisitResult.CONTINUE;
-                return FileVisitResult.SKIP_SUBTREE;
-            }
-
-            @Override
-            public FileVisitResult mergeDirectory(Path path) {
-                if (mergeAll)
-                    return FileVisitResult.CONTINUE;
-                if (skipAllDirectory)
-                    return FileVisitResult.SKIP_SUBTREE;
-
-                String[] variants = new String[] {"Merge", "Merge all", "Skip", "Skip all"};
-                Object answer = JOptionPane.showInputDialog(
-                        getContentPane(),
-                        "Directory '" + path.toString() + "' already exist. Merge?",
-                        "Directory conflict",
-                        JOptionPane.QUESTION_MESSAGE,
-                        null,
-                        variants, 0);
-                if (answer == null) {
-                    filesCopy.cancel();
-                    return FileVisitResult.TERMINATE;
-                }
-                mergeAll |= answer.equals("Merge all");
-                skipAllDirectory |= answer.equals("Skip all");
-                if (answer.equals("Merge") || mergeAll)
-                    return FileVisitResult.CONTINUE;
-                return FileVisitResult.SKIP_SUBTREE;
-            }
-        });
     }
 
     public void update(FilesCopy.State state) {
@@ -137,29 +77,128 @@ public class UIFileCopy extends JFrame {
     }
 
     public static void main(String[] args) throws IOException {
-        String from = "/home/pva701/IdeaProject/";
-        String to = "/home/pva701/tmp/";
+        String from = "/home/pva701/IdeaProjects/Dictionary";
+        String to = "/home/pva701/tmp/lel";
         FilesCopy filesCopy = new FilesCopy(Paths.get(from), Paths.get(to));
         UIFileCopy mainWindow = new UIFileCopy("UIFileCopy", filesCopy);
         mainWindow.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        mainWindow.pack();
         mainWindow.setVisible(true);
+        mainWindow.pack();
 
-        try {
-            filesCopy.start();
-        } catch (RuntimeException e) {
-            JOptionPane.showMessageDialog(mainWindow.getContentPane(), e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-            mainWindow.dispatchEvent(new WindowEvent(mainWindow, WindowEvent.WINDOW_CLOSING));
-            //e.printStackTrace();
-        }
-        /*try {
-            String hello = "hello";
-            Files.newOutputStream(Paths.get("/home/pva701/homework4/hello.txt")).write(hello.getBytes());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }*/
+        new SwingWorker<Integer, FilesCopy.State>() {
+            @Override
+            protected Integer doInBackground() throws Exception {
 
-        //Files.copy(Paths.get("/home/pva701/homework4/scripts/"),
-          //      Paths.get("/home/pva701/IdeaProjects/scripts/"));
+                filesCopy.setObserver(new FilesCopy.Observer() {
+                    @Override
+                    public void onChangeState(FilesCopy.State state) {
+                        publish(state);
+                    }
+
+                    private boolean skipAll = false;
+                    private boolean replaceAll = false;
+
+                    private boolean mergeAll = false;
+                    private boolean skipAllDirectory = false;
+
+                    @Override
+                    public FileVisitResult replaceFile(Path path) {
+                        FutureTask<FileVisitResult> dialogResult = new FutureTask<>(()->{
+                            if (replaceAll)
+                                return FileVisitResult.CONTINUE;
+                            if (skipAll)
+                                return FileVisitResult.SKIP_SUBTREE;
+
+                            String[] variants = new String[] {"Replace", "Replace all", "Skip", "Skip all"};
+                            Object answer = JOptionPane.showInputDialog(
+                                    mainWindow.getContentPane(),
+                                    "File '" + path.toString() + "' already exist. Replace?",
+                                    "File conflict",
+                                    JOptionPane.QUESTION_MESSAGE,
+                                    null,
+                                    variants, 0);
+                            if (answer == null) {
+                                filesCopy.cancel();
+                                return FileVisitResult.TERMINATE;
+                            }
+                            replaceAll |= answer.equals("Replace all");
+                            skipAll |= answer.equals("Skip all");
+                            if (answer.equals("Replace") || replaceAll)
+                                return FileVisitResult.CONTINUE;
+                            return FileVisitResult.SKIP_SUBTREE;
+                        });
+                        try {
+                            SwingUtilities.invokeAndWait(dialogResult);
+                        } catch (Exception e) {
+                            return FileVisitResult.TERMINATE;
+                        }
+                        try {
+                            return dialogResult.get();
+                        } catch (Exception e) {
+                            return FileVisitResult.TERMINATE;
+                        }
+                    }
+
+                    @Override
+                    public FileVisitResult mergeDirectory(Path path) {
+                        FutureTask<FileVisitResult> dialogResult = new FutureTask<>(()->{
+                            if (mergeAll)
+                                return FileVisitResult.CONTINUE;
+                            if (skipAllDirectory)
+                                return FileVisitResult.SKIP_SUBTREE;
+
+                            String[] variants = new String[] {"Merge", "Merge all", "Skip", "Skip all"};
+                            Object answer = JOptionPane.showInputDialog(
+                                    mainWindow.getContentPane(),
+                                    "Directory '" + path.toString() + "' already exist. Merge?",
+                                    "Directory conflict",
+                                    JOptionPane.QUESTION_MESSAGE,
+                                    null,
+                                    variants, 0);
+                            if (answer == null) {
+                                filesCopy.cancel();
+                                return FileVisitResult.TERMINATE;
+                            }
+                            mergeAll |= answer.equals("Merge all");
+                            skipAllDirectory |= answer.equals("Skip all");
+                            if (answer.equals("Merge") || mergeAll)
+                                return FileVisitResult.CONTINUE;
+                            return FileVisitResult.SKIP_SUBTREE;
+                        });
+
+                        try {
+                            SwingUtilities.invokeAndWait(dialogResult);
+                        } catch (Exception e) {
+                            return FileVisitResult.TERMINATE;
+                        }
+                        try {
+                            return dialogResult.get();
+                        } catch (Exception e) {
+                            return FileVisitResult.TERMINATE;
+                        }
+                    }
+                });
+
+                try {
+                    filesCopy.start();
+                } catch (RuntimeException e) {
+                    JOptionPane.showMessageDialog(mainWindow.getContentPane(), e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                    mainWindow.dispatchEvent(new WindowEvent(mainWindow, WindowEvent.WINDOW_CLOSING));
+                    return 1;
+                    //e.printStackTrace();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    JOptionPane.showMessageDialog(mainWindow.getContentPane(), "Something went wrong!", "Error", JOptionPane.ERROR_MESSAGE);
+                    mainWindow.dispatchEvent(new WindowEvent(mainWindow, WindowEvent.WINDOW_CLOSING));
+                    return 2;
+                }
+                return 0;
+            }
+
+            @Override
+            protected void process(List<FilesCopy.State> chunks) {
+                mainWindow.update(chunks.get(chunks.size() - 1));
+            }
+        }.execute();
     }
 }

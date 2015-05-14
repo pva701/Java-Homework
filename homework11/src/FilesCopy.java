@@ -28,7 +28,7 @@ public class FilesCopy {
             throw new IllegalArgumentException("Source doesn't exist!");
         if (Files.isRegularFile(target) && !Files.isRegularFile(source))
             throw new IllegalArgumentException("Can't copy folder to file!");
-        if (Files.notExists(target) && !Files.isRegularFile(target))
+        if (Files.notExists(target) && !Files.isRegularFile(source))
           throw new IllegalArgumentException("Target doesn't exist!");
 
         startTime = System.currentTimeMillis();
@@ -57,7 +57,7 @@ public class FilesCopy {
             return;
 
         setStatusAndPublish(State.Status.COPYING);
-        if (Files.isRegularFile(source) && !Files.isRegularFile(target))
+        if (Files.isRegularFile(source) && Files.isDirectory(target))
             target = target.resolve(source.getFileName());
         Files.walkFileTree(source, new CopyFileVisitor());
         if (currentState.isCancelled())
