@@ -77,11 +77,17 @@ public class UIFileCopy extends JFrame {
     }
 
     public static void main(String[] args) throws IOException {
-        String from = "/home/pva701/IdeaProjects/Dictionary";
-        String to = "/home/pva701/tmp/lel";
+        //String from = "/home/pva701/IdeaProjects/";
+        //String to = "/home/pva701/tmp/";
+        if (args.length != 2) {
+            System.out.println("Usage UIFileCopy <src> <dst>");
+            System.exit(0);
+        }
+        String from = args[0];
+        String to = args[1];
         FilesCopy filesCopy = new FilesCopy(Paths.get(from), Paths.get(to));
         UIFileCopy mainWindow = new UIFileCopy("UIFileCopy", filesCopy);
-        mainWindow.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        mainWindow.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         mainWindow.setVisible(true);
         mainWindow.pack();
 
@@ -95,11 +101,11 @@ public class UIFileCopy extends JFrame {
                         publish(state);
                     }
 
-                    private boolean skipAll = false;
-                    private boolean replaceAll = false;
+                    private volatile boolean skipAll = false;
+                    private volatile boolean replaceAll = false;
 
-                    private boolean mergeAll = false;
-                    private boolean skipAllDirectory = false;
+                    private volatile boolean mergeAll = false;
+                    private volatile boolean skipAllDirectory = false;
 
                     @Override
                     public FileVisitResult replaceFile(Path path) {
