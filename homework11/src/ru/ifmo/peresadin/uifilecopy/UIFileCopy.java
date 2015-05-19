@@ -1,9 +1,10 @@
+package ru.ifmo.peresadin.uifilecopy;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -23,6 +24,7 @@ public class UIFileCopy extends JFrame {
     private JLabel jLblAvSpeed = new JLabel();
     private JLabel jLblCurSpeed = new JLabel();
     private JButton jButCancel = new JButton("Cancel");
+    private volatile boolean isExit = false;
 
     public UIFileCopy(String title, FilesCopy filesCopy) {
         super(title);
@@ -46,9 +48,18 @@ public class UIFileCopy extends JFrame {
         panel.add(Box.createVerticalStrut(STRUT_SIZE));
         panel.add(jLblCurSpeed);
         panel.add(Box.createVerticalStrut(STRUT_SIZE));
-        jButCancel.addActionListener(e -> filesCopy.cancel());
+        jButCancel.addActionListener(e->{
+            if (isExit)
+                exit();
+            else
+                filesCopy.cancel();
+        });
         panel.add(jButCancel);
         add(panel);
+    }
+
+    public void exit() {
+        dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
     }
 
     public void update(FilesCopy.State state) {
@@ -64,12 +75,13 @@ public class UIFileCopy extends JFrame {
         } else if (state.getStatus() == FilesCopy.State.Status.PRE) {
             jLblStatus.setText("Preparing to copying, please wait");
             jLblElapsedSecs.setText("Elapsed: " + state.getElapsedSecs() + " sec");
-            //jLblRemSecs.setText("Remain approximate: Unknown");
-            //jLblAvSpeed.setText("Average speed: Unknown");
-            //jLblCurSpeed.setText("Current speed: Unknown");
         } else if (state.getStatus() == FilesCopy.State.Status.CANCELED) {
+            isExit = true;
+            jButCancel.setText("Exit");
             jLblStatus.setText("Cancelled");
         } else if (state.getStatus() == FilesCopy.State.Status.FINISHED) {
+            isExit = true;
+            jButCancel.setText("Exit");
             jProgressBar.setValue(state.getProgress());
             jLblElapsedSecs.setText("Elapsed: " + state.getElapsedSecs() + " sec");
             jLblStatus.setText("Copying is finished");
@@ -77,17 +89,17 @@ public class UIFileCopy extends JFrame {
     }
 
     public static void main(String[] args) throws IOException {
-        //String from = "/home/pva701/IdeaProjects/";
-        //String to = "/home/pva701/tmp/";
-        if (args.length != 2) {
+        String from = "/home/pva701/IdeaProjects/Dictionary";
+        String to = "/home/pva701/tmp/ok";
+        /*if (args.length != 2) {
             System.out.println("Usage UIFileCopy <src> <dst>");
             System.exit(0);
-        }
-        String from = args[0];
-        String to = args[1];
+        }*/
+        //String from = args[0];
+        //String to = args[1];
         FilesCopy filesCopy = new FilesCopy(Paths.get(from), Paths.get(to));
         UIFileCopy mainWindow = new UIFileCopy("UIFileCopy", filesCopy);
-        mainWindow.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        mainWindow.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         mainWindow.setVisible(true);
         mainWindow.pack();
 

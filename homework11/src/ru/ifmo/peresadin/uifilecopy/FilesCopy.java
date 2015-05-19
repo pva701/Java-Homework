@@ -1,8 +1,12 @@
+package ru.ifmo.peresadin.uifilecopy;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Timer;
+import java.util.TimerTask;
 
 /**
  * Created by pva701 on 5/10/15.
@@ -12,7 +16,6 @@ public class FilesCopy {
 
     private Path source;
     private Path target;
-    private long startTime;
 
     private State currentState = new State();
 
@@ -31,15 +34,19 @@ public class FilesCopy {
         if (Files.notExists(target) && !Files.isRegularFile(source))
           throw new IllegalArgumentException("Target doesn't exist!");
 
-        startTime = System.currentTimeMillis();
-
         setStatusAndPublish(State.Status.PRE);
+        new Timer().schedule(new TimerTask() {
+            @Override
+            public void run() {
+                publish();
+            }
+        }, 1000, 1000);
+
         Files.walkFileTree(source, new SimpleFileVisitor<Path>() {
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                 if (currentState.isCancelled())
                     return FileVisitResult.TERMINATE;
-                publish();
                 currentState.totalSize += Files.size(file);
                 return FileVisitResult.CONTINUE;
             }
@@ -48,7 +55,6 @@ public class FilesCopy {
             public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
                 if (currentState.isCancelled())
                     return FileVisitResult.TERMINATE;
-                publish();
                 currentState.totalSize += Files.size(dir);
                 return FileVisitResult.CONTINUE;
             }
@@ -62,7 +68,7 @@ public class FilesCopy {
         Files.walkFileTree(source, new CopyFileVisitor());
         if (currentState.isCancelled())
             return;
-        currentState.copiedSize = currentState.totalSize;
+        currentState.setCopiedSize(currentState.getTotalSize());
         setStatusAndPublish(State.Status.FINISHED);
     }
 
@@ -83,12 +89,9 @@ public class FilesCopy {
     }
 
     private void publish() {
-        int sec = (int)((System.currentTimeMillis() - startTime) / 1000);
-        if (sec > currentState.elapsedSecs) {
-            currentState.elapsedSecs = sec;
-            observer.onChangeState(currentState);
-            currentState.resetCurrentSpeed();
-        }
+        currentState.incElapsed();
+        observer.onChangeState(currentState);
+        currentState.resetCurrentSpeed();
     }
 
     public class CopyFileVisitor extends SimpleFileVisitor<Path> {
@@ -130,7 +133,6 @@ public class FilesCopy {
                     while ((c = is.read(bytes)) >= 0 && !currentState.isCancelled()) {
                         os.write(bytes, 0, c);
                         currentState.copyBytes(c);
-                        publish();
                     }
                 }
             }
@@ -158,51 +160,63 @@ public class FilesCopy {
         private int elapsedSecs;
         private int currentSpeed;
 
-        public int getProgress() {
+        public synchronized int getProgress() {
             if (status == Status.FINISHED)
                 return 100;
             return (int)(copiedSize * 1.0 / totalSize * 100);
         }
 
-        public int getElapsedSecs() {
+        public synchronized int getElapsedSecs() {
             return elapsedSecs;
         }
 
-        public int getRemainSecs() {
+        public synchronized int getRemainSecs() {
             if (copiedSize == 0)
                 return Integer.MAX_VALUE;
             return (int)(1L * elapsedSecs * (totalSize - copiedSize) / copiedSize);//(total - copied)/avSpeed
         }
 
-        public int getAverageSpeed() {
+        public synchronized int getAverageSpeed() {
             if (elapsedSecs == 0)
                 return 0;
             return (int)(copiedSize / elapsedSecs);
         }
 
-        public int getCurrentSpeed() {
+        public synchronized int getCurrentSpeed() {
             return currentSpeed;
         }
 
-        private void copyBytes(int bytes) {
+        private synchronized void copyBytes(int bytes) {
             currentSpeed += bytes;
             copiedSize += bytes;
         }
 
-        private void resetCurrentSpeed() {
+        private synchronized void resetCurrentSpeed() {
             currentSpeed = 0;
         }
 
-        public Status getStatus() {
+        public synchronized Status getStatus() {
             return status;
         }
 
-        public boolean isCancelled() {
+        public synchronized boolean isCancelled() {
             return status == Status.CANCELED;
         }
 
-        public boolean isFinished() {
+        public synchronized boolean isFinished() {
             return status == Status.FINISHED;
+        }
+
+        private synchronized void incElapsed() {
+            elapsedSecs++;
+        }
+
+        private synchronized long getTotalSize() {
+            return totalSize;
+        }
+
+        private synchronized void setCopiedSize(long sz) {
+            copiedSize = sz;
         }
     }
 }
